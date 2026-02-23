@@ -320,10 +320,9 @@ impl Ticket {
     
     /// Sets a new Title ID for the Ticket. This will re-encrypt the Title Key, since the Title ID
     /// is used as the IV for decrypting the Title Key.
-    pub fn set_title_id(&mut self, title_id: [u8; 8]) -> Result<(), TicketError> {
+    pub fn set_title_id(&mut self, title_id: [u8; 8]) {
         let new_enc_title_key = crypto::encrypt_title_key(self.title_key_dec(), self.common_key_index, title_id, self.is_dev());
         self.title_key = new_enc_title_key;
         self.title_id = title_id;
-        Ok(())
     }
 }

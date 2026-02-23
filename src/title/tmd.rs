@@ -322,8 +322,8 @@ impl TMD {
     }
 
     /// Sets the content records in the TMD.
-    pub fn set_content_records(&mut self, content_records: &Vec<ContentRecord>) {
-        self.content_records = content_records.clone()
+    pub fn set_content_records(&mut self, content_records: &[ContentRecord]) {
+        self.content_records = content_records.to_vec();
     }
 
     /// Gets whether a TMD is fakesigned using the strncmp (trucha) bug or not.
@@ -449,9 +449,8 @@ impl TMD {
     }
     
     /// Sets a new Title ID for a TMD.
-    pub fn set_title_id(&mut self, title_id: [u8; 8]) -> Result<(), TMDError> {
+    pub fn set_title_id(&mut self, title_id: [u8; 8]) {
         self.title_id = title_id;
-        Ok(())
     }
 
     /// Gets the Title ID of the IOS required by a TMD.

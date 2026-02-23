@@ -162,8 +162,8 @@ pub fn info(emunand: &str) -> Result<()> {
             } else {
                 None
             };
-            if ascii_tid.is_some() {
-                println!("  {} ({})", title.to_uppercase(), ascii_tid.unwrap());
+            if let Some(ascii_tid) = ascii_tid {
+                println!("  {} ({})", title.to_uppercase(), ascii_tid);
             } else {
                 println!("  {}", title.to_uppercase());
             }
@@ -192,8 +192,8 @@ pub fn info(emunand: &str) -> Result<()> {
             } else {
                 None
             };
-            if ascii_tid.is_some() {
-                println!("  {} ({})", title.to_uppercase(), ascii_tid.unwrap());
+            if let Some(ascii_tid) = ascii_tid {
+                println!("  {} ({})", title.to_uppercase(), ascii_tid);
             } else {
                 println!("  {}", title.to_uppercase());
             }

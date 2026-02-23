@@ -1,4 +1,4 @@
-name: Build rustii
+name: Build rustwii
 
 on:
   push:
@@ -19,18 +19,18 @@ jobs:
     # Not sure if this is the best choice, but I'm building in release mode to produce more effective nightly binaries.
     - name: Update Toolchain
       run: rustup update
-    - name: Build rustii
+    - name: Build rustwii
       run: cargo build --verbose --release
-    - name: Package rustii for Upload
+    - name: Package rustwii for Upload
       run: |
-        mv target/release/rustii ~/rustii
+        mv target/release/rustwii ~/rustwii
         cd ~
-        tar cvf rustii.tar rustii
-    - name: Upload rustii
+        tar cvf rustwii.tar rustwii
+    - name: Upload rustwii
       uses: actions/upload-artifact@v4
       with:
-        path: ~/rustii.tar
-        name: rustii-Linux-bin
+        path: ~/rustwii.tar
+        name: rustwii-Linux-bin
 
   build-macos-arm64:
     
@@ -42,18 +42,18 @@ jobs:
       run: rustup update
     - name: Add ARM64 Target
       run: rustup target add aarch64-apple-darwin
-    - name: Build rustii
+    - name: Build rustwii
       run: cargo build --verbose --release --target aarch64-apple-darwin
-    - name: Package rustii for Upload
+    - name: Package rustwii for Upload
       run: |
-        mv target/aarch64-apple-darwin/release/rustii ~/rustii
+        mv target/aarch64-apple-darwin/release/rustwii ~/rustwii
         cd ~
-        tar cvf rustii.tar rustii
-    - name: Upload rustii
+        tar cvf rustwii.tar rustwii
+    - name: Upload rustwii
       uses: actions/upload-artifact@v4
       with:
-        path: ~/rustii.tar
-        name: rustii-macOS-arm64-bin
+        path: ~/rustwii.tar
+        name: rustwii-macOS-arm64-bin
 
   build-macos-x86_64:
     
@@ -65,18 +65,18 @@ jobs:
       run: rustup update
     - name: Add x86_64 Target
       run: rustup target add x86_64-apple-darwin
-    - name: Build rustii
+    - name: Build rustwii
       run: cargo build --verbose --release --target x86_64-apple-darwin
-    - name: Package rustii for Upload
+    - name: Package rustwii for Upload
       run: |
-        mv target/x86_64-apple-darwin/release/rustii ~/rustii
+        mv target/x86_64-apple-darwin/release/rustwii ~/rustwii
         cd ~
-        tar cvf rustii.tar rustii
-    - name: Upload rustii
+        tar cvf rustwii.tar rustwii
+    - name: Upload rustwii
       uses: actions/upload-artifact@v4
       with:
-        path: ~/rustii.tar
-        name: rustii-macOS-x86_64-bin
+        path: ~/rustwii.tar
+        name: rustwii-macOS-x86_64-bin
 
   build-windows-x86_64:
     
@@ -86,12 +86,12 @@ jobs:
     - uses: actions/checkout@v4
     - name: Update Toolchain
       run: rustup update
-    - name: Build rustii
+    - name: Build rustwii
       run: cargo build --verbose --release
-    - name: Upload rustii
+    - name: Upload rustwii
       uses: actions/upload-artifact@v4
       with:
-        path: D:\a\rustii\rustii\target\release\rustii.exe
-        name: rustii-Windows-bin
+        path: D:\a\rustwii\rustwii\target\release\rustwii.exe
+        name: rustwii-Windows-bin
 
       

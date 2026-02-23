@@ -327,8 +327,8 @@ pub fn edit_wad(input: &str, output: &Option<String>, edits: &WadModifications) 
         let new_tid: Vec<u8> = tid_high.iter().chain(&tid_low).copied().collect();
         title.set_title_id(new_tid.try_into().unwrap())?;
     }
-    if edits.ios.is_some() {
-        let new_ios = edits.ios.unwrap();
+    if let Some(ios) = edits.ios {
+        let new_ios = ios;
         if new_ios < 3 {
             bail!("The specified IOS version is not valid! The new IOS version must be between 3 and 255.")
         }
@@ -428,12 +428,12 @@ pub fn remove_wad(input: &str, output: &Option<String>, identifier: &ContentIden
     let mut title = title::Title::from_bytes(&fs::read(in_path)?).with_context(|| "The provided WAD file could not be parsed, and is likely invalid.")?;
     // Parse the identifier passed to choose how to find and remove the target.
     // ...maybe don't take the above comment out of context
-    if identifier.index.is_some() {
-        title.content.remove_content(identifier.index.unwrap()).with_context(|| "The specified index does not exist in the provided WAD!")?;
+    if let Some(index) = identifier.index {
+        title.content.remove_content(index).with_context(|| "The specified index does not exist in the provided WAD!")?;
         println!("{:?}", title.tmd);
         title.fakesign().with_context(|| "An unknown error occurred while fakesigning the modified WAD.")?;
         fs::write(&out_path, title.to_wad()?.to_bytes()?).with_context(|| "Could not open output file for writing.")?;
-        println!("Successfully removed content at index {} in WAD file \"{}\".", identifier.index.unwrap(), out_path.display());
+        println!("Successfully removed content at index {} in WAD file \"{}\".", index, out_path.display());
     } else if identifier.cid.is_some() {
         let cid = u32::from_str_radix(identifier.cid.clone().unwrap().as_str(), 16).with_context(|| "The specified Content ID is invalid!")?;
         let index = match title.content.get_index_from_cid(cid) {
@@ -476,8 +476,8 @@ pub fn set_wad(input: &str, content: &str, output: &Option<String>, identifier: 
         };
     }
     // Parse the identifier passed to choose how to do the find and replace.
-    if identifier.index.is_some() {
-        match title.set_content(&new_content, identifier.index.unwrap(), None, target_type) {
+    if let Some(index) = identifier.index {
+        match title.set_content(&new_content, index, None, target_type) {
             Err(title::TitleError::Content(content::ContentError::IndexOutOfRange { index, max })) => {
                 bail!("The specified index {} does not exist in this WAD! The maximum index is {}.", index, max)
             },

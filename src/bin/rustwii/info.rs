@@ -20,8 +20,8 @@ fn print_tid(title_id: [u8; 8]) -> Result<()> {
     } else {
         None
     };
-    if ascii_tid.is_some() {
-        println!("  Title ID: {} ({})", hex::encode(title_id).to_uppercase(), ascii_tid.unwrap());
+    if let Some(ascii_tid) = ascii_tid {
+        println!("  Title ID: {} ({})", hex::encode(title_id).to_uppercase(), ascii_tid);
     } else {
         println!("  Title ID: {}", hex::encode(title_id).to_uppercase());
     }
@@ -74,7 +74,7 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
         println!("  Certificate Info: {} (Unknown)", signature_issuer);
     }
     let region = if hex::encode(tmd.title_id()).eq("0000000100000002") {
-        match versions::dec_to_standard(tmd.title_version(), &hex::encode(tmd.title_id()), Some(tmd.is_vwii() != false))
+        match versions::dec_to_standard(tmd.title_version(), &hex::encode(tmd.title_id()), Some(tmd.is_vwii()))
             .unwrap_or_default().chars().last() {
             Some('U') => "USA",
             Some('E') => "EUR",
@@ -89,11 +89,11 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
     };
     println!("  Region: {}", region);
     println!("  Title Type: {}", tmd.title_type()?);
-    println!("  vWii Title: {}", tmd.is_vwii() != false);
+    println!("  vWii Title: {}", tmd.is_vwii());
     println!("  DVD Video Access: {}", tmd.check_access_right(tmd::AccessRight::DVDVideo));
     println!("  AHB Access: {}", tmd.check_access_right(tmd::AccessRight::AHB));
-    if cert.is_some() {
-        let signing_str = match cert::verify_tmd(&cert.unwrap(), &tmd) {
+    if let Some(cert) = cert {
+        let signing_str = match cert::verify_tmd(&cert, &tmd) {
             Ok(result) => match result {
                 true => "Valid (Unmodified TMD)",
                 false => {
@@ -161,8 +161,8 @@ fn print_ticket_info(ticket: ticket::Ticket, cert: Option<cert::Certificate>) ->
     println!("  Decryption Key: {}", key);
     println!("  Title Key (Encrypted): {}", hex::encode(ticket.title_key()));
     println!("  Title Key (Decrypted): {}", hex::encode(ticket.title_key_dec()));
-    if cert.is_some() {
-        let signing_str = match cert::verify_ticket(&cert.unwrap(), &ticket) {
+    if let Some(cert) = cert {
+        let signing_str = match cert::verify_ticket(&cert, &ticket) {
             Ok(result) => match result {
                 true => "Valid (Unmodified Ticket)",
                 false => {

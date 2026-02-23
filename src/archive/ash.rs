@@ -45,7 +45,7 @@ fn ash_bit_reader_feed_word(reader: &mut ASHBitReader) -> Result<(), ASHError> {
     Ok(())
 }
 
-fn ash_bit_reader_init(src: &[u8], size: u32, startpos: u32) -> Result<ASHBitReader, ASHError> {
+fn ash_bit_reader_init(src: &'_ [u8], size: u32, startpos: u32) -> Result<ASHBitReader<'_>, ASHError> {
     // Load data into a bit reader, then have it read its first word.
     let mut reader = ASHBitReader {
         src,

@@ -190,8 +190,8 @@ impl Title {
     /// Sets a new Title ID for the Title. This will re-encrypt the Title Key in the Ticket, since 
     /// the Title ID is used as the IV for decrypting the Title Key.
     pub fn set_title_id(&mut self, title_id: [u8; 8]) -> Result<(), TitleError> {
-        self.tmd.set_title_id(title_id)?;
-        self.ticket.set_title_id(title_id)?;
+        self.tmd.set_title_id(title_id);
+        self.ticket.set_title_id(title_id);
         Ok(())
     }
 

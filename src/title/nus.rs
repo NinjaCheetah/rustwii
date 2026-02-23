@@ -126,8 +126,8 @@ pub fn download_tmd(title_id: [u8; 8], title_version: Option<u16>, wiiu_endpoint
     } else {
         WII_NUS_ENDPOINT.to_owned()
     };
-    let tmd_url = if title_version.is_some() {
-        format!("{}{}/tmd.{}", endpoint_url, &hex::encode(title_id), title_version.unwrap())
+    let tmd_url = if let Some(title_version) = title_version {
+        format!("{}{}/tmd.{}", endpoint_url, &hex::encode(title_id), title_version)
     } else {
         format!("{}{}/tmd", endpoint_url, &hex::encode(title_id))
     };

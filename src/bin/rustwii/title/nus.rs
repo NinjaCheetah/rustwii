@@ -214,7 +214,7 @@ pub fn download_title(tid: &str, version: &Option<u16>, output: &TitleOutputType
         bail!("The specified Title ID is invalid!");
     }
     if version.is_some() {
-        println!("Downloading title {} v{}, please wait...", tid, version.clone().unwrap());
+        println!("Downloading title {} v{}, please wait...", tid, version.unwrap());
     } else {
         println!("Downloading title {} vLatest, please wait...", tid);
     }
@@ -245,9 +245,9 @@ pub fn download_title(tid: &str, version: &Option<u16>, output: &TitleOutputType
     let content_region = content::ContentRegion::from_contents(contents, tmd.content_records().clone())?;
     println!(" - Building certificate chain...");
     let cert_chain = cert::CertificateChain::from_bytes(&nus::download_cert_chain(true).with_context(|| "Certificate chain could not be built.")?)?;
-    if tik.is_some() {
+    if let Some(tik) = tik {
         // If we have a Ticket, then build a Title and jump to the output method.
-        let title = title::Title::from_parts(cert_chain, None, tik.unwrap(), tmd, content_region, None)?;
+        let title = title::Title::from_parts(cert_chain, None, tik, tmd, content_region, None)?;
         if output.wad.is_some() {
             download_title_wad(title, output.wad.clone().unwrap())?;
         } else {

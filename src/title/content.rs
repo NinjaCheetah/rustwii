@@ -81,9 +81,9 @@ impl ContentRegion {
             return Err(ContentError::MissingContents { required: content_records.len(), found: contents.len()});
         }
         let mut content_region = Self::new(content_records)?;
-        for i in 0..contents.len() {
-            let target_index = content_region.content_records[i].index;
-            content_region.load_enc_content(&contents[i], target_index as usize)?;
+        for (index, content) in contents.iter().enumerate() {
+            let target_index = content_region.content_records[index].index;
+            content_region.load_enc_content(content, target_index as usize)?;
         }
         Ok(content_region)
     }
@@ -213,15 +213,15 @@ impl ContentRegion {
         }
         self.content_records[index].content_size = content_size;
         self.content_records[index].content_hash = content_hash;
-        if cid.is_some() {
+        if let Some(cid) = cid {
             // Make sure that the new CID isn't already in use.
-            if self.content_records.iter().any(|record| record.content_id == cid.unwrap()) {
-                return Err(ContentError::CIDAlreadyExists(cid.unwrap()));
+            if self.content_records.iter().any(|record| record.content_id == cid) {
+                return Err(ContentError::CIDAlreadyExists(cid));
             }
-            self.content_records[index].content_id = cid.unwrap();
+            self.content_records[index].content_id = cid;
         }
-        if content_type.is_some() {
-            self.content_records[index].content_type = content_type.unwrap();
+        if let Some(content_type) = content_type {
+            self.content_records[index].content_type = content_type;
         }
         self.contents[index] = content.to_vec();
         Ok(())
@@ -320,12 +320,18 @@ pub struct SharedContentMap {
     pub records: Vec<ContentMapEntry>,
 }
 
+impl Default for SharedContentMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SharedContentMap {
     /// Creates a new SharedContentMap instance from the binary data of a content.map file.
     pub fn from_bytes(data: &[u8]) -> Result<SharedContentMap, ContentError> {
         // The uid.sys file must be divisible by a multiple of 28, or something is wrong, since each
         // entry is 28 bytes long.
-        if (data.len() % 28) != 0 {
+        if !data.len().is_multiple_of(28) {
             return Err(ContentError::InvalidSharedContentMapLength);
         }
         let record_count = data.len() / 28;
