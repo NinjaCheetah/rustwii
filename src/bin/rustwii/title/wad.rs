@@ -10,9 +10,9 @@ use clap::{Subcommand, Args};
 use glob::glob;
 use hex::FromHex;
 use rand::prelude::*;
-use regex::RegexBuilder;
 use rustwii::title::{cert, crypto, tmd, ticket, content, wad};
 use rustwii::title;
+use crate::title::shared::{validate_target_ios, validate_target_tid, validate_target_type, ContentIdentifier, TitleModifications};
 
 #[derive(Subcommand)]
 #[command(arg_required_else_help = true)]
@@ -52,7 +52,7 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<String>,
         #[command(flatten)]
-        edits: WadModifications
+        edits: TitleModifications
     },
     /// Pack a directory into a WAD file
     Pack {
@@ -110,35 +110,6 @@ pub struct ConvertTargets {
     vwii: bool,
 }
 
-#[derive(Args)]
-#[clap(next_help_heading = "Content Identifier")]
-#[group(multiple = false, required = true)]
-pub struct ContentIdentifier {
-    /// The index of the target content
-    #[arg(short, long)]
-    index: Option<usize>,
-    /// The Content ID of the target content
-    #[arg(short, long)]
-    cid: Option<String>,
-}
-
-#[derive(Args)]
-#[clap(next_help_heading = "Possible Modifications")]
-#[group(multiple = true, required = true)]
-pub struct WadModifications {
-    /// A new IOS version for this WAD (formatted as the decimal IOS version, e.g. 58, with a valid
-    /// range of 3-255)
-    #[arg(long)]
-    ios: Option<u8>,
-    /// A new Title ID for this WAD (formatted as 4 ASCII characters, e.g. HADE)
-    #[arg(long)]
-    tid: Option<String>,
-    /// A new type for this WAD (valid options are "System", "Channel", "SystemChannel",
-    /// "GameChannel", "DLC", "HiddenChannel")
-    #[arg(long)]
-    r#type: Option<String>,
-}
-
 enum Target {
     Retail,
     Dev,
@@ -155,7 +126,7 @@ impl fmt::Display for Target {
     }
 }
 
-pub fn add_wad(input: &str, content: &str, output: &Option<String>, cid: &Option<String>, ctype: &Option<String>) -> Result<()> {
+pub fn wad_add(input: &str, content: &str, output: &Option<String>, cid: &Option<String>, ctype: &Option<String>) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", in_path.display());
@@ -209,7 +180,7 @@ pub fn add_wad(input: &str, content: &str, output: &Option<String>, cid: &Option
     Ok(())
 }
 
-pub fn convert_wad(input: &str, target: &ConvertTargets, output: &Option<String>) -> Result<()> {
+pub fn wad_convert(input: &str, target: &ConvertTargets, output: &Option<String>) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", in_path.display());
@@ -281,10 +252,10 @@ pub fn convert_wad(input: &str, target: &ConvertTargets, output: &Option<String>
     Ok(())
 }
 
-pub fn edit_wad(input: &str, output: &Option<String>, edits: &WadModifications) -> Result<()> {
+pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
-        bail!("Source directory \"{}\" does not exist.", in_path.display());
+        bail!("Source WAD \"{}\" does not exist.", in_path.display());
     }
     let out_path = if output.is_some() {
         PathBuf::from(output.clone().unwrap()).with_extension("wad")
@@ -298,44 +269,32 @@ pub fn edit_wad(input: &str, output: &Option<String>, edits: &WadModifications) 
     // These are joined, because that way if both are selected we only need to set the TID (and by
     // extension, re-encrypt the Title Key) a single time.
     if edits.tid.is_some() || edits.r#type.is_some() {
-        let tid_high = if edits.r#type.is_some() {
-            let new_type = match edits.r#type.clone().unwrap().to_ascii_lowercase().as_str() {
-                "system" => tmd::TitleType::System,
-                "channel" => tmd::TitleType::Channel,
-                "systemchannel" => tmd::TitleType::SystemChannel,
-                "gamechannel" => tmd::TitleType::GameChannel,
-                "dlc" => tmd::TitleType::DLC,
-                "hiddenchannel" => tmd::TitleType::HiddenChannel,
-                _ => bail!("The specified title type \"{}\" is invalid! Try --help to see valid types.", edits.r#type.clone().unwrap()),
-            };
+        let tid_high = if let Some(new_type) = &edits.r#type {
+            let new_type = validate_target_type(&new_type.to_ascii_lowercase())?;
             changes_summary.push(format!("Changed title type from \"{}\" to \"{}\"", title.tmd.title_type()?, new_type));
             Vec::from_hex(format!("{:08X}", new_type as u32))?
         } else {
             title.tmd.title_id()[0..4].to_vec()
         };
-        let tid_low = if edits.tid.is_some() {
-            let re = RegexBuilder::new(r"^[a-z0-9!@#$%^&*]{4}$").case_insensitive(true).build()?;
-            let new_tid_low = edits.tid.clone().unwrap().to_ascii_uppercase();
-            if !re.is_match(&new_tid_low) {
-                bail!("The specified Title ID is not valid! The new Title ID must be 4 characters and include only letters, numbers, and the special characters \"!@#$%&*\".");
-            }
-            changes_summary.push(format!("Changed Title ID from \"{}\" to \"{}\"", hex::encode(&title.tmd.title_id()[4..8]).to_ascii_uppercase(), hex::encode(&new_tid_low).to_ascii_uppercase()));
-            Vec::from_hex(hex::encode(new_tid_low))?
+
+        let tid_low = if let Some(new_tid) = &edits.tid {
+            let new_tid = validate_target_tid(&new_tid.to_ascii_uppercase())?;
+            changes_summary.push(format!("Changed Title ID from \"{}\" to \"{}\"", hex::encode(&title.tmd.title_id()[4..8]).to_ascii_uppercase(), hex::encode(&new_tid).to_ascii_uppercase()));
+            new_tid
         } else {
             title.tmd.title_id()[4..8].to_vec()
         };
+
         let new_tid: Vec<u8> = tid_high.iter().chain(&tid_low).copied().collect();
         title.set_title_id(new_tid.try_into().unwrap())?;
     }
-    if let Some(ios) = edits.ios {
-        let new_ios = ios;
-        if new_ios < 3 {
-            bail!("The specified IOS version is not valid! The new IOS version must be between 3 and 255.")
-        }
-        let new_ios_tid = <[u8; 8]>::from_hex(format!("00000001{:08X}", new_ios))?;
-        changes_summary.push(format!("Changed required IOS from IOS{} to IOS{}", title.tmd.ios_tid().last().unwrap(), new_ios));
+
+    if let Some(new_ios) = edits.ios {
+        let new_ios_tid = validate_target_ios(new_ios)?;
         title.tmd.set_ios_tid(new_ios_tid)?;
+        changes_summary.push(format!("Changed required IOS from IOS{} to IOS{}", title.tmd.ios_tid().last().unwrap(), new_ios));
     }
+
     title.fakesign()?;
     fs::write(&out_path, title.to_wad()?.to_bytes()?).with_context(|| format!("Could not open output file \"{}\" for writing.", out_path.display()))?;
     println!("Successfully edited WAD file \"{}\"!\nSummary of changes:", out_path.display());
@@ -345,7 +304,7 @@ pub fn edit_wad(input: &str, output: &Option<String>, edits: &WadModifications) 
     Ok(())
 }
 
-pub fn pack_wad(input: &str, output: &str) -> Result<()> {
+pub fn wad_pack(input: &str, output: &str) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source directory \"{}\" does not exist.", in_path.display());
@@ -415,7 +374,7 @@ pub fn pack_wad(input: &str, output: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn remove_wad(input: &str, output: &Option<String>, identifier: &ContentIdentifier) ->  Result<()> {
+pub fn wad_remove(input: &str, output: &Option<String>, identifier: &ContentIdentifier) ->  Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", in_path.display());
@@ -449,7 +408,7 @@ pub fn remove_wad(input: &str, output: &Option<String>, identifier: &ContentIden
     Ok(())
 }
 
-pub fn set_wad(input: &str, content: &str, output: &Option<String>, identifier: &ContentIdentifier, ctype: &Option<String>) -> Result<()> {
+pub fn wad_set(input: &str, content: &str, output: &Option<String>, identifier: &ContentIdentifier, ctype: &Option<String>) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", in_path.display());
@@ -501,7 +460,7 @@ pub fn set_wad(input: &str, content: &str, output: &Option<String>, identifier: 
     Ok(())
 }
 
-pub fn unpack_wad(input: &str, output: &str) -> Result<()> {
+pub fn wad_unpack(input: &str, output: &str) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", input);

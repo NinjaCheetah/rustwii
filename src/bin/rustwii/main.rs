@@ -60,6 +60,11 @@ enum Commands {
         #[command(subcommand)]
         command: nand::setting::Commands
     },
+    /// Edit a TMD file
+    Tmd {
+        #[command(subcommand)]
+        command: title::tmd::Commands
+    },
     /// Pack/unpack a U8 archive
     U8 {
         #[command(subcommand)]
@@ -144,6 +149,16 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Some(Commands::Tmd { command}) => {
+            match command {
+                title::tmd::Commands::Edit { input, output, edits} => {
+                    title::tmd::tmd_edit(input, output, edits)?
+                },
+                title::tmd::Commands::Remove { input, output, identifier } => {
+                    title::tmd::tmd_remove(input, output, identifier)?
+                }
+            }
+        },
         Some(Commands::U8 { command }) => {
             match command {
                 archive::u8::Commands::Pack { input, output } => {
@@ -157,25 +172,25 @@ fn main() -> Result<()> {
         Some(Commands::Wad { command }) => {
             match command {
                 title::wad::Commands::Add { input, content, output, cid, r#type } => {
-                    title::wad::add_wad(input, content, output, cid, r#type)?
+                    title::wad::wad_add(input, content, output, cid, r#type)?
                 },
                 title::wad::Commands::Convert { input, target, output } => {
-                    title::wad::convert_wad(input, target, output)?
+                    title::wad::wad_convert(input, target, output)?
                 },
                 title::wad::Commands::Edit { input, output, edits } => {
-                    title::wad::edit_wad(input, output, edits)?
+                    title::wad::wad_edit(input, output, edits)?
                 },
                 title::wad::Commands::Pack { input, output} => {
-                    title::wad::pack_wad(input, output)?
+                    title::wad::wad_pack(input, output)?
                 },
                 title::wad::Commands::Remove { input, output, identifier } => {
-                    title::wad::remove_wad(input, output, identifier)?
+                    title::wad::wad_remove(input, output, identifier)?
                 },
                 title::wad::Commands::Set { input, content, output, identifier, r#type} => {
-                    title::wad::set_wad(input, content, output, identifier, r#type)?
+                    title::wad::wad_set(input, content, output, identifier, r#type)?
                 },
                 title::wad::Commands::Unpack { input, output } => {
-                    title::wad::unpack_wad(input, output)?
+                    title::wad::wad_unpack(input, output)?
                 },
             }
         },
