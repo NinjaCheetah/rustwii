@@ -1,5 +1,5 @@
-// title/cert.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/cert.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the structures and methods required for validating the signatures of Wii titles.
 
@@ -37,8 +37,8 @@ pub enum CertificateKeyType {
     ECC
 }
 
-#[derive(Debug, Clone)]
 /// A structure that represents the components of a Wii signing certificate.
+#[derive(Debug, Clone)]
 pub struct Certificate {
     signer_key_type: CertificateKeyType,
     signature: Vec<u8>,
@@ -165,8 +165,8 @@ impl Certificate {
     }
 }
 
-#[derive(Debug)]
 /// A structure that represents the components of the Wii's signing certificate chain.
+#[derive(Debug)]
 pub struct CertificateChain {
     ca_cert: Certificate,
     tmd_cert: Certificate,
@@ -346,7 +346,7 @@ pub fn verify_tmd(tmd_cert: &Certificate, tmd: &tmd::TMD) -> Result<bool, Certif
     let public_key_modulus = BigUint::from_bytes_be(&tmd_cert.pub_key_modulus());
     let public_key_exponent = BigUint::from(tmd_cert.pub_key_exponent());
     let root_key = RsaPublicKey::new(public_key_modulus, public_key_exponent).unwrap();
-    match root_key.verify(Pkcs1v15Sign::new::<Sha1>(), &tmd_hash, tmd.signature.as_slice()) {
+    match root_key.verify(Pkcs1v15Sign::new::<Sha1>(), &tmd_hash, tmd.signature().as_slice()) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
     }
@@ -368,7 +368,7 @@ pub fn verify_ticket(ticket_cert: &Certificate, ticket: &ticket::Ticket) -> Resu
     let public_key_modulus = BigUint::from_bytes_be(&ticket_cert.pub_key_modulus());
     let public_key_exponent = BigUint::from(ticket_cert.pub_key_exponent());
     let root_key = RsaPublicKey::new(public_key_modulus, public_key_exponent).unwrap();
-    match root_key.verify(Pkcs1v15Sign::new::<Sha1>(), &ticket_hash, ticket.signature.as_slice()) {
+    match root_key.verify(Pkcs1v15Sign::new::<Sha1>(), &ticket_hash, ticket.signature().as_slice()) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
     }

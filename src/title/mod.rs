@@ -1,5 +1,5 @@
-// title/mod.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/mod.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Root for all title-related modules and implementation of the high-level Title object.
 
@@ -13,7 +13,6 @@ pub mod tmd;
 pub mod versions;
 pub mod wad;
 
-use std::rc::Rc;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -53,7 +52,7 @@ impl Title {
         let cert_chain = cert::CertificateChain::from_bytes(&wad.cert_chain()).map_err(TitleError::CertificateError)?;
         let ticket = ticket::Ticket::from_bytes(&wad.ticket()).map_err(TitleError::Ticket)?;
         let tmd = tmd::TMD::from_bytes(&wad.tmd()).map_err(TitleError::TMD)?;
-        let content = content::ContentRegion::from_bytes(&wad.content(), Rc::clone(&tmd.content_records)).map_err(TitleError::Content)?;
+        let content = content::ContentRegion::from_bytes(&wad.content(), tmd.content_records().clone()).map_err(TitleError::Content)?;
         Ok(Title {
             cert_chain,
             crl: wad.crl(),
@@ -123,13 +122,13 @@ impl Title {
     
     /// Gets the decrypted content file from the Title at the specified index.
     pub fn get_content_by_index(&self, index: usize) -> Result<Vec<u8>, content::ContentError> {
-        let content = self.content.get_content_by_index(index, self.ticket.dec_title_key())?;
+        let content = self.content.get_content_by_index(index, self.ticket.title_key_dec())?;
         Ok(content)
     }
     
     /// Gets the decrypted content file from the Title with the specified Content ID.
     pub fn get_content_by_cid(&self, cid: u32) -> Result<Vec<u8>, content::ContentError> {
-        let content = self.content.get_content_by_cid(cid, self.ticket.dec_title_key())?;
+        let content = self.content.get_content_by_cid(cid, self.ticket.title_key_dec())?;
         Ok(content)
     }
 
@@ -137,7 +136,7 @@ impl Title {
     /// have its size and hash saved into the matching record. Optionally, a new Content ID or
     /// content type can be provided, with the existing values being preserved by default.
     pub fn set_content(&mut self, content: &[u8], index: usize, cid: Option<u32>, content_type: Option<tmd::ContentType>) -> Result<(), TitleError> {
-        self.content.set_content(content, index, cid, content_type, self.ticket.dec_title_key())?;
+        self.content.set_content(content, index, cid, content_type, self.ticket.title_key_dec())?;
         Ok(())
     }
 
@@ -146,7 +145,7 @@ impl Title {
     /// index will be automatically assigned based on the highest index currently recorded in the
     /// content records.
     pub fn add_content(&mut self, content: &[u8], cid: u32, content_type: tmd::ContentType) -> Result<(), TitleError> {
-        self.content.add_content(content, cid, content_type, self.ticket.dec_title_key())?;
+        self.content.add_content(content, cid, content_type, self.ticket.title_key_dec())?;
         Ok(())
     }
     
@@ -158,7 +157,7 @@ impl Title {
         // accurate results.
         title_size += self.tmd.to_bytes().map_err(|x| TitleError::TMD(tmd::TMDError::IO(x)))?.len();
         title_size += self.ticket.to_bytes().map_err(|x| TitleError::Ticket(ticket::TicketError::IO(x)))?.len();
-        for record in self.tmd.content_records.borrow().iter() {
+        for record in self.tmd.content_records().iter() {
             if matches!(record.content_type, tmd::ContentType::Shared) {
                 if absolute == Some(true) {
                     title_size += record.content_size as usize;

@@ -1,5 +1,5 @@
-// filetypes.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// filetypes.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Common code for identifying Wii file types.
 

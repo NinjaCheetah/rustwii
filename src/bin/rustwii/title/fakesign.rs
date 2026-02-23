@@ -1,12 +1,12 @@
-// title/fakesign.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/fakesign.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for the fakesign command in the rustii CLI.
 
 use std::{str, fs};
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
-use rustii::{title, title::tmd, title::ticket};
+use rustwii::{title, title::tmd, title::ticket};
 use crate::filetypes::{WiiFileType, identify_file_type};
 
 pub fn fakesign(input: &str, output: &Option<String>) -> Result<()> {

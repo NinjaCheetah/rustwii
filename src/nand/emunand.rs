@@ -1,5 +1,5 @@
-// nand/emunand.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// nand/emunand.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the structures and methods required for handling Wii EmuNANDs.
 
@@ -184,9 +184,9 @@ impl EmuNAND {
         }
         fs::create_dir(&title_dir)?;
         fs::write(title_dir.join("title.tmd"), title.tmd.to_bytes()?)?;
-        for i in 0..title.content.content_records.borrow().len() {
-            if matches!(title.content.content_records.borrow()[i].content_type, tmd::ContentType::Normal) {
-                let content_path = title_dir.join(format!("{:08X}.app", title.content.content_records.borrow()[i].content_id).to_ascii_lowercase());
+        for i in 0..title.content.content_records().len() {
+            if matches!(title.content.content_records()[i].content_type, tmd::ContentType::Normal) {
+                let content_path = title_dir.join(format!("{:08X}.app", title.content.content_records()[i].content_id).to_ascii_lowercase());
                 fs::write(content_path, title.get_content_by_index(i)?)?;
             }
         }
@@ -200,9 +200,9 @@ impl EmuNAND {
         } else {
             content::SharedContentMap::new()
         };
-        for i in 0..title.content.content_records.borrow().len() {
-            if matches!(title.content.content_records.borrow()[i].content_type, tmd::ContentType::Shared) {
-                if let Some(file_name) = content_map.add(&title.content.content_records.borrow()[i].content_hash)? {
+        for i in 0..title.content.content_records().len() {
+            if matches!(title.content.content_records()[i].content_type, tmd::ContentType::Shared) {
+                if let Some(file_name) = content_map.add(&title.content.content_records()[i].content_hash)? {
                     let content_path = self.emunand_dirs["shared1"].join(format!("{}.app", file_name.to_ascii_lowercase()));
                     fs::write(content_path, title.get_content_by_index(i)?)?;
                 }

@@ -1,18 +1,18 @@
 [package]
-name = "rustii"
+name = "rustwii"
 authors = ["NinjaCheetah <ninjacheetah@ncxprogramming.com>"]
 license = "MIT"
 description = "A Rust library and CLI for handling files and formats used by the Wii"
 version = "0.1.0"
 readme = "README.md"
-homepage = "https://github.com/NinjaCheetah/rustii"
-repository = "https://github.com/NinjaCheetah/rustii"
+homepage = "https://github.com/NinjaCheetah/rustwii"
+repository = "https://github.com/NinjaCheetah/rustwii"
 edition = "2024"
-default-run = "rustii"
+default-run = "rustwii"
 
 [[bin]]
-name = "rustii"
-path = "src/bin/rustii/main.rs"
+name = "rustwii"
+path = "src/bin/rustwii/main.rs"
 
 [[bin]]
 name = "playground"

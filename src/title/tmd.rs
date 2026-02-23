@@ -1,13 +1,11 @@
-// title/tmd.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/tmd.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the structures and methods required for TMD parsing and editing.
 
-use std::cell::RefCell;
 use std::fmt;
 use std::io::{Cursor, Read, Write};
 use std::ops::Index;
-use std::rc::Rc;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use sha1::{Sha1, Digest};
 use thiserror::Error;
@@ -81,8 +79,8 @@ pub enum AccessRight {
     DVDVideo = 1,
 }
 
-#[derive(Debug, Clone)]
 /// A structure that represents the metadata of a content file in a digital Wii title.
+#[derive(Debug, Clone)]
 pub struct ContentRecord {
     pub content_id: u32,
     pub index: u16,
@@ -91,33 +89,33 @@ pub struct ContentRecord {
     pub content_hash: [u8; 20],
 }
 
-#[derive(Debug)]
 /// A structure that represents a Wii TMD (Title Metadata) file.
+#[derive(Debug)]
 pub struct TMD {
-    pub signature_type: u32,
-    pub signature: [u8; 256],
+    signature_type: u32,
+    signature: [u8; 256],
     padding1: [u8; 60],
-    pub signature_issuer: [u8; 64],
-    pub tmd_version: u8,
-    pub ca_crl_version: u8,
-    pub signer_crl_version: u8,
-    pub is_vwii: u8,
+    signature_issuer: [u8; 64],
+    tmd_version: u8,
+    ca_crl_version: u8,
+    signer_crl_version: u8,
+    is_vwii: u8,
     ios_tid: [u8; 8],
     title_id: [u8; 8],
     title_type: [u8; 4],
-    pub group_id: u16,
+    group_id: u16,
     padding2: [u8; 2],
     region: u16,
-    pub ratings: [u8; 16],
+    ratings: [u8; 16],
     reserved1: [u8; 12],
-    pub ipc_mask: [u8; 12],
+    ipc_mask: [u8; 12],
     reserved2: [u8; 18],
-    pub access_rights: u32,
-    pub title_version: u16,
-    pub num_contents: u16,
-    pub boot_index: u16,
-    pub minor_version: u16, // Normally unused, but good for fakesigning!
-    pub content_records: Rc<RefCell<Vec<ContentRecord>>>,
+    access_rights: u32,
+    title_version: u16,
+    num_contents: u16,
+    boot_index: u16,
+    minor_version: u16, // Normally unused, but useful when fakesigning.
+    content_records: Vec<ContentRecord>,
 }
 
 impl TMD {
@@ -211,7 +209,7 @@ impl TMD {
             num_contents,
             boot_index,
             minor_version,
-            content_records: Rc::new(RefCell::new(content_records)),
+            content_records,
         })
     }
     
@@ -238,11 +236,11 @@ impl TMD {
         buf.write_all(&self.reserved2)?;
         buf.write_u32::<BigEndian>(self.access_rights)?;
         buf.write_u16::<BigEndian>(self.title_version)?;
-        buf.write_u16::<BigEndian>(self.content_records.borrow().len() as u16)?;
+        buf.write_u16::<BigEndian>(self.content_records.len() as u16)?;
         buf.write_u16::<BigEndian>(self.boot_index)?;
         buf.write_u16::<BigEndian>(self.minor_version)?;
         // Iterate over content records and write out content record data.
-        for content in self.content_records.borrow().iter() {
+        for content in self.content_records.iter() {
             buf.write_u32::<BigEndian>(content.content_id)?;
             buf.write_u16::<BigEndian>(content.index)?;
             match content.content_type {
@@ -256,6 +254,76 @@ impl TMD {
             buf.write_all(&content.content_hash)?;
         }
         Ok(buf)
+    }
+
+    /// Gets the type of the signature on the TMD.
+    pub fn signature_type(&self) -> u32 {
+        self.signature_type
+    }
+
+    /// Gets the signature of the TMD.
+    pub fn signature(&self) -> [u8; 256] {
+        self.signature
+    }
+
+    /// Gets the version of the TMD file.
+    pub fn tmd_version(&self) -> u8 {
+        self.tmd_version
+    }
+
+    /// Gets the version of CA CRL listed in the TMD.
+    pub fn ca_crl_version(&self) -> u8 {
+        self.ca_crl_version
+    }
+
+    /// Gets the version of the signer CRL listed in the TMD.
+    pub fn signer_crl_version(&self) -> u8 {
+        self.signer_crl_version
+    }
+
+    /// Gets the group ID listed in the TMD.
+    pub fn group_id(&self) -> u16 {
+        self.group_id
+    }
+
+    /// Gets the age ratings listed in the TMD.
+    pub fn ratings(&self) -> [u8; 16] {
+        self.ratings
+    }
+
+    /// Gets the ipc mask listed in the TMD.
+    pub fn ipc_mask(&self) -> [u8; 12] {
+        self.ipc_mask
+    }
+
+    /// Gets the version of title listed in the TMD.
+    pub fn title_version(&self) -> u16 {
+        self.title_version
+    }
+
+    /// Gets the number of contents listed in the TMD.
+    pub fn num_contents(&self) -> u16 {
+        self.num_contents
+    }
+
+    /// Gets the index of the title's boot content.
+    pub fn boot_index(&self) -> u16 {
+        self.boot_index
+    }
+
+    /// Gets the minor version listed in the TMD. This field is typically unused.
+    pub fn minor_version(&self) -> u16 {
+        self.minor_version
+    }
+
+    /// Gets a reference to the content records from the TMD.
+    pub fn content_records(&self) -> &Vec<ContentRecord> {
+        &self.content_records
+    }
+
+    /// Sets the content records in the TMD.
+    pub fn set_content_records(&mut self, content_records: &Vec<ContentRecord>) {
+        self.content_records = content_records.clone()
     }
 
     /// Gets whether a TMD is fakesigned using the strncmp (trucha) bug or not.
@@ -331,11 +399,11 @@ impl TMD {
         // Find possible content indices, because the provided one could exist while the indices
         // are out of order, which could cause problems finding the content.
         let mut content_indices = Vec::new();
-        for record in self.content_records.borrow().iter() {
+        for record in self.content_records.iter() {
             content_indices.push(record.index);
         }
         let target_index = content_indices.index(index);
-        match self.content_records.borrow()[*target_index as usize].content_type {
+        match self.content_records[*target_index as usize].content_type {
             ContentType::Normal => ContentType::Normal,
             ContentType::Development => ContentType::Development,
             ContentType::HashTree => ContentType::HashTree,
@@ -365,9 +433,14 @@ impl TMD {
         Ok(())
     }
     
-    /// Gets whether a TMD describes a vWii title or not.
+    /// Gets whether a TMD describes a vWii title.
     pub fn is_vwii(&self) -> bool {
         self.is_vwii == 1
+    }
+
+    /// Sets whether a TMD describes a vWii title.
+    pub fn set_is_vwii(&mut self, value: bool) {
+        self.is_vwii = value as u8;
     }
     
     /// Gets the Title ID of a TMD.

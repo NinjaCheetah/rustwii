@@ -1,5 +1,5 @@
-// title/tik.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/tik.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the structures and methods required for Ticket parsing and editing.
 
@@ -33,28 +33,28 @@ pub struct TitleLimit {
 #[derive(Debug)]
 /// A structure that represents a Wii Ticket file.
 pub struct Ticket {
-    pub signature_type: u32,
-    pub signature: [u8; 256],
+    signature_type: u32,
+    signature: [u8; 256],
     padding1: [u8; 60],
-    pub signature_issuer: [u8; 64],
-    pub ecdh_data: [u8; 60],
-    pub ticket_version: u8,
+    signature_issuer: [u8; 64],
+    ecdh_data: [u8; 60],
+    ticket_version: u8,
     reserved1: [u8; 2],
-    pub title_key: [u8; 16],
+    title_key: [u8; 16],
     unknown1: [u8; 1],
-    pub ticket_id: [u8; 8],
-    pub console_id: [u8; 4],
+    ticket_id: [u8; 8],
+    console_id: [u8; 4],
     title_id: [u8; 8],
     unknown2: [u8; 2],
-    pub title_version: u16,
-    pub permitted_titles_mask: [u8; 4],
-    pub permit_mask: [u8; 4],
-    pub title_export_allowed: u8,
-    pub common_key_index: u8,
+    title_version: u16,
+    permitted_titles_mask: [u8; 4],
+    permit_mask: [u8; 4],
+    title_export_allowed: u8,
+    common_key_index: u8,
     unknown3: [u8; 48],
-    pub content_access_permission: [u8; 64],
+    content_access_permission: [u8; 64],
     padding2: [u8; 2],
-    pub title_limits: [TitleLimit; 8],
+    title_limits: [TitleLimit; 8],
 }
 
 impl Ticket {
@@ -169,8 +169,87 @@ impl Ticket {
         Ok(buf)
     }
 
+    /// Gets the type of the signature on the Ticket.
+    pub fn signature_type(&self) -> u32 {
+        self.signature_type
+    }
+
+    /// Gets the signature of the Ticket.
+    pub fn signature(&self) -> [u8; 256] {
+        self.signature
+    }
+
+    /// Gets the ECDH data listed in the Ticket.
+    pub fn ecdh_data(&self) -> [u8; 60] {
+        self.ecdh_data
+    }
+
+    /// Gets the version of the Ticket file.
+    pub fn ticket_version(&self) -> u8 {
+        self.ticket_version
+    }
+
+    /// Gets the raw encrypted Title Key from the Ticket.
+    pub fn title_key(&self) -> [u8; 16] {
+        self.title_key
+    }
+
+    pub fn set_title_key(&mut self, title_key: [u8; 16]) {
+        self.title_key = title_key;
+    }
+
+    /// Gets the Ticket ID listed in the Ticket.
+    pub fn ticket_id(&self) -> [u8; 8] {
+        self.ticket_id
+    }
+
+    /// Gets the console ID listed in the Ticket.
+    pub fn console_id(&self) -> [u8; 4] {
+        self.console_id
+    }
+
+    /// Gets the version of the title listed in the Ticket.
+    pub fn title_version(&self) -> u16 {
+        self.title_version
+    }
+
+    /// Gets the permitted titles mask listed in the Ticket.
+    pub fn permitted_titles_mask(&self) -> [u8; 4] {
+        self.permitted_titles_mask
+    }
+
+    /// Gets the permit mask listed in the Ticket.
+    pub fn permit_mask(&self) -> [u8; 4] {
+        self.permit_mask
+    }
+
+    /// Gets whether title export is allowed by the Ticket.
+    pub fn title_export_allowed(&self) -> bool {
+        self.title_export_allowed == 1
+    }
+
+    /// Gets the index of the common key used by the Ticket.
+    pub fn common_key_index(&self) -> u8 {
+        self.common_key_index
+    }
+
+    /// Sets the index of the common key used by the Ticket.
+    pub fn set_common_key_index(&mut self, index: u8) {
+        self.common_key_index = index;
+    }
+
+    /// Gets the content access permissions listed in the Ticket.
+    pub fn content_access_permission(&self) -> [u8; 64] {
+        self.content_access_permission
+    }
+
+    /// Gets the title usage limits listed in the Ticket.
+    pub fn title_limits(&self) -> [TitleLimit; 8] {
+        self.title_limits
+    }
+
     /// Gets the decrypted version of the Title Key stored in a Ticket.
-    pub fn dec_title_key(&self) -> [u8; 16] {
+    pub fn title_key_dec(&self) -> [u8; 16] {
         // Get the dev status of this Ticket so decrypt_title_key knows the right common key.
         let is_dev = self.is_dev();
         decrypt_title_key(self.title_key, self.common_key_index, self.title_id, is_dev)
@@ -242,7 +321,7 @@ impl Ticket {
     /// Sets a new Title ID for the Ticket. This will re-encrypt the Title Key, since the Title ID
     /// is used as the IV for decrypting the Title Key.
     pub fn set_title_id(&mut self, title_id: [u8; 8]) -> Result<(), TicketError> {
-        let new_enc_title_key = crypto::encrypt_title_key(self.dec_title_key(), self.common_key_index, title_id, self.is_dev());
+        let new_enc_title_key = crypto::encrypt_title_key(self.title_key_dec(), self.common_key_index, title_id, self.is_dev());
         self.title_key = new_enc_title_key;
         self.title_id = title_id;
         Ok(())

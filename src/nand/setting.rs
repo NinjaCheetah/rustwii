@@ -1,5 +1,5 @@
-// nand/setting.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// nand/setting.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the structures and methods required for parsing and editing setting.txt in the Wii
 // Menu's data.

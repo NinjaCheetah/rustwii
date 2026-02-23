@@ -1,5 +1,5 @@
-// archive/lz77.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// archive/lz77.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for the LZ77 compression/decompression commands in the rustii CLI.
 
@@ -7,7 +7,7 @@ use std::{str, fs};
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
-use rustii::archive::lz77;
+use rustwii::archive::lz77;
 
 #[derive(Subcommand)]
 #[command(arg_required_else_help = true)]

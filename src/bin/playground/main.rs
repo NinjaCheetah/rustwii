@@ -1,8 +1,8 @@
 // Sample file for testing rustii library stuff.
 
 use std::fs;
-use rustii::title::{wad, cert};
-use rustii::title;
+use rustwii::title::{wad, cert};
+use rustwii::title;
 // use rustii::title::content;
 
 fn main() {
@@ -12,18 +12,16 @@ fn main() {
     
     let wad = wad::WAD::from_bytes(&data).unwrap();
     println!("size of tmd: {:?}", wad.tmd().len());
-    println!("num content records: {:?}", title.tmd.content_records.borrow().len());
-    println!("first record data: {:?}", title.tmd.content_records.borrow().first().unwrap());
+    println!("num content records: {:?}", title.tmd.content_records().len());
+    println!("first record data: {:?}", title.tmd.content_records().first().unwrap());
     println!("TMD is fakesigned: {:?}",title.tmd.is_fakesigned());
     
-    println!("title version from ticket is: {:?}", title.ticket.title_version);
-    println!("title key (enc): {:?}", title.ticket.title_key);
-    println!("title key (dec): {:?}", title.ticket.dec_title_key());
+    println!("title version from ticket is: {:?}", title.ticket.title_version());
+    println!("title key (enc): {:?}", title.ticket.title_key());
+    println!("title key (dec): {:?}", title.ticket.title_key_dec());
     println!("ticket is fakesigned: {:?}", title.ticket.is_fakesigned());
     
     println!("title is fakesigned: {:?}", title.is_fakesigned());
-    
-    println!("wad header: {:?}", wad.header);
     
     let cert_chain = &title.cert_chain;
     println!("cert chain OK");

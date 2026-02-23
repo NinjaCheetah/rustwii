@@ -1,5 +1,5 @@
-// nand/sys.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// nand/sys.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the structures and methods required for parsing and editing files in /sys/ on the
 // Wii's NAND.
@@ -27,12 +27,18 @@ pub struct UidSys {
     entries: Vec<UidSysEntry>,
 }
 
+impl Default for UidSys {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UidSys {
     /// Creates a new UidSys instance from the binary data of a uid.sys file.
     pub fn from_bytes(data: &[u8]) -> Result<Self, UidSysError> {
         // The uid.sys file must be divisible by a multiple of 12, or something is wrong, since each
         // entry is 12 bytes long.
-        if (data.len() % 12) != 0 {
+        if !data.len().is_multiple_of(12) {
             return Err(UidSysError::InvalidUidSysLength);
         }
         let entry_count = data.len() / 12;

@@ -1,5 +1,5 @@
-// nand/emunand.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// nand/emunand.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for EmuNAND-related commands in the rustii CLI.
 
@@ -8,9 +8,9 @@ use std::path::{absolute, Path};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
 use walkdir::WalkDir;
-use rustii::nand::{emunand, setting};
-use rustii::title::{nus, tmd};
-use rustii::title;
+use rustwii::nand::{emunand, setting};
+use rustwii::title::{nus, tmd};
+use rustwii::title;
 
 #[derive(Subcommand)]
 #[command(arg_required_else_help = true)]
@@ -64,7 +64,7 @@ pub fn info(emunand: &str) -> Result<()> {
     match emunand.get_title_tmd([0, 0, 0, 1, 0, 0, 0, 2]) {
         Some(tmd) => {
             is_vwii = tmd.is_vwii();
-            println!("  System Menu Version: {}", title::versions::dec_to_standard(tmd.title_version, "0000000100000002", Some(is_vwii)).unwrap());
+            println!("  System Menu Version: {}", title::versions::dec_to_standard(tmd.title_version(), "0000000100000002", Some(is_vwii)).unwrap());
         },
         None => {
             println!("  System Menu Version: None");
@@ -142,12 +142,12 @@ pub fn info(emunand: &str) -> Result<()> {
                     println!("  BC-WFS ({})", ios.to_ascii_uppercase());
                 }
                 let tmd = emunand.get_title_tmd(hex::decode(ios)?.try_into().unwrap()).unwrap();
-                println!("    Version: {}", tmd.title_version);
+                println!("    Version: {}", tmd.title_version());
             }
             else {
                 println!("  IOS{} ({})", u32::from_str_radix(&ios[8..16], 16)?, ios.to_ascii_uppercase());
                 let tmd = emunand.get_title_tmd(hex::decode(ios)?.try_into().unwrap()).unwrap();
-                println!("    Version: {} ({})", tmd.title_version, title::versions::dec_to_standard(tmd.title_version, ios, None).unwrap());
+                println!("    Version: {} ({})", tmd.title_version(), title::versions::dec_to_standard(tmd.title_version(), ios, None).unwrap());
             }
         }
         println!();
@@ -168,7 +168,7 @@ pub fn info(emunand: &str) -> Result<()> {
                 println!("  {}", title.to_uppercase());
             }
             let tmd = emunand.get_title_tmd(hex::decode(&title)?.try_into().unwrap()).unwrap();
-            println!("    Version: {}", tmd.title_version);
+            println!("    Version: {}", tmd.title_version());
             let ios_tid = &hex::encode(tmd.ios_tid()).to_ascii_uppercase();
             print!("    Required IOS: IOS{} ({})", u32::from_str_radix(&hex::encode(&tmd.ios_tid()[4..8]), 16)?, ios_tid);
             if !installed_ioses.contains(ios_tid) {
@@ -290,7 +290,7 @@ pub fn install_missing(emunand: &str, vwii: &bool) -> Result<()> {
     for ios in missing_tids {
         println!("Downloading IOS{} ({})...", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase());
         let title = nus::download_title(ios, None, true)?;
-        let version = title.tmd.title_version;
+        let version = title.tmd.title_version();
         println!("  Installing IOS{} ({}) v{}...", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase(), version);
         emunand.install_title(title, false)?;
         println!("  Installed IOS{} ({}) v{}!", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase(), version);

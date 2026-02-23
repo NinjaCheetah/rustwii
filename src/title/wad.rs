@@ -1,5 +1,5 @@
-// title/wad.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/wad.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the structures and methods required for WAD parsing and editing.
 
@@ -32,16 +32,16 @@ pub enum WADType {
 #[derive(Debug)]
 /// A structure that represents an entire WAD file as a separate header and body.
 pub struct WAD {
-    pub header: WADHeader,
-    pub body: WADBody,
+    header: WADHeader,
+    body: WADBody,
 }
 
 #[derive(Debug)]
 /// A structure that represents the header of a WAD file.
 pub struct WADHeader {
-    pub header_size: u32,
-    pub wad_type: WADType,
-    pub wad_version: u16,
+    header_size: u32,
+    wad_type: WADType,
+    wad_version: u16,
     cert_chain_size: u32,
     crl_size: u32,
     ticket_size: u32,
@@ -92,6 +92,51 @@ impl WADHeader {
             padding: [0; 32],
         };
         Ok(header)
+    }
+
+    /// Gets the size of the header data.
+    pub fn header_size(&self) -> u32 {
+        self.header_size
+    }
+
+    /// Gets the type of WAD described by the header.
+    pub fn wad_type(&self) -> &WADType {
+        &self.wad_type
+    }
+
+    /// Gets the version of the WAD described by the header.
+    pub fn wad_version(&self) -> u16 {
+        self.wad_version
+    }
+
+    /// Gets the size of the certificate chain defined in the header.
+    pub fn cert_chain_size(&self) -> u32 {
+        self.cert_chain_size
+    }
+
+    /// Gets the size of the CRL defined in the header.
+    pub fn crl_size(&self) -> u32 {
+        self.crl_size
+    }
+
+    /// Gets the size of the Ticket defined in the header.
+    pub fn ticket_size(&self) -> u32 {
+        self.ticket_size
+    }
+
+    /// Gets the size of the TMD defined in the header.
+    pub fn tmd_size(&self) -> u32 {
+        self.tmd_size
+    }
+
+    /// Gets the size of the content defined in the header.
+    pub fn content_size(&self) -> u32 {
+        self.content_size
+    }
+
+    /// Gets the size of the metadata defined in the header.
+    pub fn meta_size(&self) -> u32 {
+        self.meta_size
     }
 }
 
@@ -235,6 +280,11 @@ impl WAD {
         buf.write_all(&self.body.meta).map_err(WADError::IO)?;
         buf.resize((buf.len() + 63) & !63, 0);
         Ok(buf)
+    }
+
+    /// Gets the type of the WAD.
+    pub fn wad_type(&self) -> &WADType {
+        self.header.wad_type()
     }
     
     pub fn cert_chain_size(&self) -> u32 { self.header.cert_chain_size }

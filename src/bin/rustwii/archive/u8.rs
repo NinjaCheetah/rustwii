@@ -1,5 +1,5 @@
-// archive/u8.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// archive/u8.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for the U8 packing/unpacking commands in the rustii CLI.
 
@@ -10,7 +10,7 @@ use std::rc::Rc;
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
 use glob::glob;
-use rustii::archive::u8;
+use rustwii::archive::u8;
 
 #[derive(Subcommand)]
 #[command(arg_required_else_help = true)]

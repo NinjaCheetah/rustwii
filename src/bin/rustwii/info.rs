@@ -1,5 +1,5 @@
-// info.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// info.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for the info command in the rustii CLI.
 
@@ -8,8 +8,8 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 use anyhow::{bail, Context, Result};
-use rustii::archive::u8;
-use rustii::{title, title::cert, title::tmd, title::ticket, title::wad, title::versions};
+use rustwii::archive::u8;
+use rustwii::{title, title::cert, title::tmd, title::ticket, title::wad, title::versions};
 use crate::filetypes::{WiiFileType, identify_file_type};
 
 // Avoids duplicated code, since both TMD and Ticket info print the TID in the same way.
@@ -45,15 +45,15 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
     // Print all important keys from the TMD.
     println!("Title Info");
     print_tid(tmd.title_id())?;
-    print_title_version(tmd.title_version, tmd.title_id(), tmd.is_vwii())?;
-    println!("  TMD Version: {}", tmd.tmd_version);
+    print_title_version(tmd.title_version(), tmd.title_id(), tmd.is_vwii())?;
+    println!("  TMD Version: {}", tmd.tmd_version());
     if hex::encode(tmd.ios_tid()).eq("0000000000000000") {
         println!("  Required IOS: N/A");
     }
-    else if hex::encode(tmd.ios_tid()).ne(&format!("{:016X}", tmd.title_version)) {
+    else if hex::encode(tmd.ios_tid()).ne(&format!("{:016X}", tmd.title_version())) {
         println!("  Required IOS: IOS{} ({})", tmd.ios_tid().last().unwrap(), hex::encode(tmd.ios_tid()).to_uppercase());
     }
-    let signature_issuer = String::from_utf8(Vec::from(tmd.signature_issuer)).unwrap_or_default();
+    let signature_issuer = String::from_utf8(Vec::from(tmd.signature_issuer())).unwrap_or_default();
     if signature_issuer.contains("CP00000004") {
         println!("  Certificate: CP00000004 (Retail)");
         println!("  Certificate Issuer: Root-CA00000001 (Retail)");
@@ -74,7 +74,7 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
         println!("  Certificate Info: {} (Unknown)", signature_issuer);
     }
     let region = if hex::encode(tmd.title_id()).eq("0000000100000002") {
-        match versions::dec_to_standard(tmd.title_version, &hex::encode(tmd.title_id()), Some(tmd.is_vwii != 0))
+        match versions::dec_to_standard(tmd.title_version(), &hex::encode(tmd.title_id()), Some(tmd.is_vwii() != false))
             .unwrap_or_default().chars().last() {
             Some('U') => "USA",
             Some('E') => "EUR",
@@ -89,7 +89,7 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
     };
     println!("  Region: {}", region);
     println!("  Title Type: {}", tmd.title_type()?);
-    println!("  vWii Title: {}", tmd.is_vwii != 0);
+    println!("  vWii Title: {}", tmd.is_vwii() != false);
     println!("  DVD Video Access: {}", tmd.check_access_right(tmd::AccessRight::DVDVideo));
     println!("  AHB Access: {}", tmd.check_access_right(tmd::AccessRight::AHB));
     if cert.is_some() {
@@ -117,10 +117,10 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
         println!("  Fakesigned: {}", tmd.is_fakesigned());
     }
     println!("\nContent Info");
-    println!("  Total Contents: {}", tmd.content_records.borrow().len());
-    println!("  Boot Content Index: {}", tmd.boot_index);
+    println!("  Total Contents: {}", tmd.content_records().len());
+    println!("  Boot Content Index: {}", tmd.boot_index());
     println!("  Content Records:");
-    for content in tmd.content_records.borrow().iter() {
+    for content in tmd.content_records().iter() {
         println!("    Content Index: {}", content.index);
         println!("      Content ID: {:08X}", content.content_id);
         println!("      Content Type: {}", content.content_type);
@@ -134,9 +134,9 @@ fn print_ticket_info(ticket: ticket::Ticket, cert: Option<cert::Certificate>) ->
     // Print all important keys from the Ticket.
     println!("Ticket Info");
     print_tid(ticket.title_id())?;
-    print_title_version(ticket.title_version, ticket.title_id(), ticket.common_key_index == 2)?;
-    println!("  Ticket Version: {}", ticket.ticket_version);
-    let signature_issuer = String::from_utf8(Vec::from(ticket.signature_issuer)).unwrap_or_default();
+    print_title_version(ticket.title_version(), ticket.title_id(), ticket.common_key_index() == 2)?;
+    println!("  Ticket Version: {}", ticket.ticket_version());
+    let signature_issuer = String::from_utf8(Vec::from(ticket.signature_issuer())).unwrap_or_default();
     if signature_issuer.contains("XS00000003") {
         println!("  Certificate: XS00000003 (Retail)");
         println!("  Certificate Issuer: Root-CA00000001 (Retail)");
@@ -149,7 +149,7 @@ fn print_ticket_info(ticket: ticket::Ticket, cert: Option<cert::Certificate>) ->
     } else {
         println!("  Certificate Info: {} (Unknown)", signature_issuer);
     }
-    let key = match ticket.common_key_index {
+    let key = match ticket.common_key_index() {
         0 => {
             if ticket.is_dev() { "Common (Development)" }
             else { "Common (Retail)" }
@@ -159,8 +159,8 @@ fn print_ticket_info(ticket: ticket::Ticket, cert: Option<cert::Certificate>) ->
         _ => "Unknown (Likely Common)"
     };
     println!("  Decryption Key: {}", key);
-    println!("  Title Key (Encrypted): {}", hex::encode(ticket.title_key));
-    println!("  Title Key (Decrypted): {}", hex::encode(ticket.dec_title_key()));
+    println!("  Title Key (Encrypted): {}", hex::encode(ticket.title_key()));
+    println!("  Title Key (Decrypted): {}", hex::encode(ticket.title_key_dec()));
     if cert.is_some() {
         let signing_str = match cert::verify_ticket(&cert.unwrap(), &ticket) {
             Ok(result) => match result {
@@ -190,7 +190,7 @@ fn print_ticket_info(ticket: ticket::Ticket, cert: Option<cert::Certificate>) ->
 
 fn print_wad_info(wad: wad::WAD) -> Result<()> {
     println!("WAD Info");
-    match wad.header.wad_type {
+    match wad.wad_type() {
         wad::WADType::ImportBoot => { println!("  WAD Type: boot2") },
         wad::WADType::Installable => { println!("  WAD Type: Standard Installable") },
     }

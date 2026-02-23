@@ -1,13 +1,13 @@
-![rustii-banner](https://github.com/user-attachments/assets/08a7eea1-837e-4bce-939e-13c720b35226)
-# rustii
+![rustwii-banner](https://github.com/user-attachments/assets/08a7eea1-837e-4bce-939e-13c720b35226)
+# rustwii
 
-*Like rusty but it's rustii because the Wii? Get it?*
+*Like rusty but it's rustwii because the Wii? Get it?*
 
-[![Build rustii](https://github.com/NinjaCheetah/rustii/actions/workflows/rust.yml/badge.svg)](https://github.com/NinjaCheetah/rustii/actions/workflows/rust.yml)
+[![Build rustwii](https://github.com/NinjaCheetah/rustwii/actions/workflows/rust.yml/badge.svg)](https://github.com/NinjaCheetah/rustwii/actions/workflows/rust.yml)
 
-rustii is a library and command line tool written in Rust for handling the various files and formats found on the Wii. rustii is a port of my other library, [libWiiPy](https://github.com/NinjaCheetah/libWiiPy), which aims to accomplish the same goal in Python. At this point, rustii should not be considered stable, however it offers most of the same core functionality as libWiiPy, and the rustii CLI offers most of the same features as WiiPy. You can check which features are available and ready for use in both the library and the CLI below. The goal is for rustii and libWiiPy to eventually have feature parity, with the rustii CLI acting as a drop-in replacement for the (comparatively much less efficient) [WiiPy](https://github.com/NinjaCheetah/WiiPy) CLI.
+rustwii is a library and command line tool written in Rust for handling the various files and formats found on the Wii. rustwii is a port of my other library, [libWiiPy](https://github.com/NinjaCheetah/libWiiPy), which aims to accomplish the same goal in Python. At this point, rustwii should not be considered stable, however it offers most of the same core functionality as libWiiPy, and the rustwii CLI offers most of the same features as WiiPy. You can check which features are available and ready for use in both the library and the CLI below. The goal is for rustwii and libWiiPy to eventually have feature parity, with the rustwii CLI acting as a drop-in replacement for the (comparatively much less efficient) [WiiPy](https://github.com/NinjaCheetah/WiiPy) CLI.
 
-There is currently no public documentation for rustii, as I'm putting that off until I reach feature parity with libWiiPy so that the APIs are an equal level of stable. You can, however, reference the doc strings present on many of the structs and functions, and build them into basic documentation yourself (using `cargo doc --no-deps`). The [libWiiPy API docs](https://docs.ninjacheetah.dev) may also be helpful in some cases.
+There is currently no public documentation for rustwii, as I'm putting that off until I reach feature parity with libWiiPy so that the APIs are an equal level of stable. You can, however, reference the doc strings present on many of the structs and functions, and build them into basic documentation yourself (using `cargo doc --no-deps`). The [libWiiPy API docs](https://docs.ninjacheetah.dev) may also be helpful in some cases.
 
 I'm still very new to Rust, so pardon any messy code or confusing API decisions you may find. libWiiPy started off like that, too.
 
@@ -31,13 +31,13 @@ I'm still very new to Rust, so pardon any messy code or confusing API decisions 
 - Info command for WADs/TMDs/Tickets/U8 archives
 - U8 archive packing/unpacking
 
-To see specific usage information, check `rustii --help` and `rustii <command> --help`.
+To see specific usage information, check `rustwii --help` and `rustwii <command> --help`.
 
 ## Building
-rustii is a standard Rust crate. You'll need to have [Rust installed](https://www.rust-lang.org/learn/get-started), and then you can simply run:
+rustwii is a standard Rust crate. You'll need to have [Rust installed](https://www.rust-lang.org/learn/get-started), and then you can simply run:
 ```
 cargo build --release
 ```
-to compile the rustii library and CLI. The CLI can then be found at `target/release/rustii(.exe)`.
+to compile the rustwii library and CLI. The CLI can then be found at `target/release/rustwii(.exe)`.
 
-You can also download the latest nightly build from [GitHub Actions](https://github.com/NinjaCheetah/rustii/actions).
+You can also download the latest nightly build from [GitHub Actions](https://github.com/NinjaCheetah/rustwii/actions).

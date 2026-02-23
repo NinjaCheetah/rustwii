@@ -1,5 +1,5 @@
-// main.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// main.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Base for the rustii CLI that handles argument parsing and directs execution to the proper module.
 

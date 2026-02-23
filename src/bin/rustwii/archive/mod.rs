@@ -1,7 +1,5 @@
 // archive/mod.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
-//
-// Root for all archive-related modules.
 
 pub mod ash;
 pub mod lz77;

@@ -1,5 +1,5 @@
-// title/nus.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/nus.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the functions required for downloading data from the NUS.
 
@@ -80,7 +80,7 @@ pub fn download_content(title_id: [u8; 8], content_id: u32, wiiu_endpoint: bool)
 
 /// Downloads all contents from the specified title from the NUS.
 pub fn download_contents(tmd: &tmd::TMD, wiiu_endpoint: bool) -> Result<Vec<Vec<u8>>, NUSError> {
-    let content_ids: Vec<u32> = tmd.content_records.borrow().iter().map(|record| { record.content_id }).collect();
+    let content_ids: Vec<u32> = tmd.content_records().iter().map(|record| { record.content_id }).collect();
     let mut contents: Vec<Vec<u8>> = Vec::new();
     for id in content_ids {
         contents.push(download_content(tmd.title_id(), id, wiiu_endpoint)?);
@@ -112,7 +112,7 @@ pub fn download_title(title_id: [u8; 8], title_version: Option<u16>, wiiu_endpoi
     let cert_chain = cert::CertificateChain::from_bytes(&download_cert_chain(wiiu_endpoint)?)?;
     let tmd = tmd::TMD::from_bytes(&download_tmd(title_id, title_version, wiiu_endpoint)?)?;
     let tik = ticket::Ticket::from_bytes(&download_ticket(title_id, wiiu_endpoint)?)?;
-    let content_region = content::ContentRegion::from_contents(download_contents(&tmd, wiiu_endpoint)?, tmd.content_records.clone())?;
+    let content_region = content::ContentRegion::from_contents(download_contents(&tmd, wiiu_endpoint)?, tmd.content_records().clone())?;
     let title = title::Title::from_parts(cert_chain, None, tik, tmd, content_region, None)?;
     Ok(title)
 }

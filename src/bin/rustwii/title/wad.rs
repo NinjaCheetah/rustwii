@@ -1,19 +1,18 @@
-// title/wad.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/wad.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for WAD-related commands in the rustii CLI.
 
 use std::{str, fs, fmt};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use anyhow::{bail, Context, Result};
 use clap::{Subcommand, Args};
 use glob::glob;
 use hex::FromHex;
 use rand::prelude::*;
 use regex::RegexBuilder;
-use rustii::title::{cert, crypto, tmd, ticket, content, wad};
-use rustii::title;
+use rustwii::title::{cert, crypto, tmd, ticket, content, wad};
+use rustwii::title;
 
 #[derive(Subcommand)]
 #[command(arg_required_else_help = true)]
@@ -186,7 +185,7 @@ pub fn add_wad(input: &str, content: &str, output: &Option<String>, cid: &Option
     };
     let target_cid = if cid.is_some() {
         let cid = u32::from_str_radix(cid.clone().unwrap().as_str(), 16).with_context(|| "The specified Content ID is invalid!")?;
-        if title.content.content_records.borrow().iter().any(|record| record.content_id == cid) {
+        if title.content.content_records().iter().any(|record| record.content_id == cid) {
             bail!("The specified Content ID \"{:08X}\" is already being used in this WAD!", cid);
         }
         cid
@@ -196,7 +195,7 @@ pub fn add_wad(input: &str, content: &str, output: &Option<String>, cid: &Option
         let mut cid: u32;
         loop {
             cid = rng.random_range(0..=0xFF);
-            if !title.content.content_records.borrow().iter().any(|record| record.content_id == cid) {
+            if !title.content.content_records().iter().any(|record| record.content_id == cid) {
                 break;
             }
         }
@@ -250,32 +249,32 @@ pub fn convert_wad(input: &str, target: &ConvertTargets, output: &Option<String>
     } else {
         "retail"
     };
-    let title_key = title.ticket.dec_title_key();
+    let title_key = title.ticket.title_key_dec();
     let title_key_new: [u8; 16];
     match target {
         Target::Dev => {
             title.tmd.set_signature_issuer(String::from("Root-CA00000002-CP00000007"))?;
             title.ticket.set_signature_issuer(String::from("Root-CA00000002-XS00000006"))?;
             title_key_new = crypto::encrypt_title_key(title_key, 0, title.ticket.title_id(), true);
-            title.ticket.common_key_index = 0;
-            title.tmd.is_vwii = 0;
+            title.ticket.set_common_key_index(0);
+            title.tmd.set_is_vwii(false);
         },
         Target::Retail => {
             title.tmd.set_signature_issuer(String::from("Root-CA00000001-CP00000004"))?;
             title.ticket.set_signature_issuer(String::from("Root-CA00000001-XS00000003"))?;
             title_key_new = crypto::encrypt_title_key(title_key, 0, title.ticket.title_id(), false);
-            title.ticket.common_key_index = 0;
-            title.tmd.is_vwii = 0;
+            title.ticket.set_common_key_index(0);
+            title.tmd.set_is_vwii(false);
         },
         Target::Vwii => {
             title.tmd.set_signature_issuer(String::from("Root-CA00000001-CP00000004"))?;
             title.ticket.set_signature_issuer(String::from("Root-CA00000001-XS00000003"))?;
             title_key_new = crypto::encrypt_title_key(title_key, 2, title.ticket.title_id(), false);
-            title.ticket.common_key_index = 2;
-            title.tmd.is_vwii = 1;
+            title.ticket.set_common_key_index(2);
+            title.tmd.set_is_vwii(true);
         }
     }
-    title.ticket.title_key = title_key_new;
+    title.ticket.set_title_key(title_key_new);
     title.fakesign()?;
     fs::write(&out_path, title.to_wad()?.to_bytes()?)?;
     println!("Successfully converted {} WAD to {} WAD \"{}\"!", source, target, out_path.file_name().unwrap().to_str().unwrap());
@@ -389,15 +388,15 @@ pub fn pack_wad(input: &str, output: &str) -> Result<()> {
         footer = fs::read(&footer_files[0]).with_context(|| "Could not open footer file for reading.")?;
     }
     // Iterate over expected content and read it into a content region.
-    let mut content_region = content::ContentRegion::new(Rc::clone(&tmd.content_records))?;
-    let content_indexes: Vec<u16> = tmd.content_records.borrow().iter().map(|record| record.index).collect();
+    let mut content_region = content::ContentRegion::new(tmd.content_records().clone())?;
+    let content_indexes: Vec<u16> = tmd.content_records().iter().map(|record| record.index).collect();
     for index in content_indexes {
         let data = fs::read(format!("{}/{:08X}.app", in_path.display(), index)).with_context(|| format!("Could not open content file \"{:08X}.app\" for reading.", index))?;
-        content_region.set_content(&data, index as usize, None, None, tik.dec_title_key())
+        content_region.set_content(&data, index as usize, None, None, tik.title_key_dec())
             .with_context(|| "Failed to load content into the ContentRegion.")?;
     }
     // Ensure that the TMD is modified with our potentially updated content records.
-    tmd.content_records = content_region.content_records.clone();
+    tmd.set_content_records(content_region.content_records());
     let wad = wad::WAD::from_parts(&cert_chain, &[], &tik, &tmd, &content_region, &footer).with_context(|| "An unknown error occurred while building a WAD from the input files.")?;
     // Write out WAD file.
     let mut out_path = PathBuf::from(output);
@@ -525,10 +524,10 @@ pub fn unpack_wad(input: &str, output: &str) -> Result<()> {
     let meta_file_name = format!("{}.footer", tid);
     fs::write(Path::join(out_path, meta_file_name.clone()), title.meta()).with_context(|| format!("Failed to open footer file \"{}\" for writing.", meta_file_name))?;
     // Iterate over contents, decrypt them, and write them out.
-    for i in 0..title.tmd.content_records.borrow().len() {
-        let content_file_name = format!("{:08X}.app", title.content.content_records.borrow()[i].index);
-        let dec_content = title.get_content_by_index(i).with_context(|| format!("Failed to unpack content with Content ID {:08X}.", title.content.content_records.borrow()[i].content_id))?;
-        fs::write(Path::join(out_path, content_file_name), dec_content).with_context(|| format!("Failed to open content file \"{:08X}.app\" for writing.", title.content.content_records.borrow()[i].content_id))?;
+    for i in 0..title.tmd.content_records().len() {
+        let content_file_name = format!("{:08X}.app", title.content.content_records()[i].index);
+        let dec_content = title.get_content_by_index(i).with_context(|| format!("Failed to unpack content with Content ID {:08X}.", title.content.content_records()[i].content_id))?;
+        fs::write(Path::join(out_path, content_file_name), dec_content).with_context(|| format!("Failed to open content file \"{:08X}.app\" for writing.", title.content.content_records()[i].content_id))?;
     }
     println!("Successfully unpacked WAD file to \"{}\"!", out_path.display());
     Ok(())

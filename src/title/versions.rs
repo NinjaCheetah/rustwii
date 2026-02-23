@@ -1,5 +1,5 @@
-// title/versions.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/versions.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Handles converting Title version formats, and provides Wii Menu version constants.
 

@@ -1,5 +1,5 @@
-// nand/setting.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// nand/setting.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for setting.txt-related commands in the rustii CLI.
 
@@ -7,7 +7,7 @@ use std::{str, fs};
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
-use rustii::nand::setting;
+use rustwii::nand::setting;
 
 #[derive(Subcommand)]
 #[command(arg_required_else_help = true)]

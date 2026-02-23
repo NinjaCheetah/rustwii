@@ -1,5 +1,5 @@
-// archive/ash.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// archive/ash.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the decompression routines used for the Wii's ASH compression scheme.
 // May someday even include the compression routines! If I ever get around to it.

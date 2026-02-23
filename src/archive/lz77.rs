@@ -1,5 +1,5 @@
-// archive/lz77.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// archive/lz77.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Implements the compression and decompression routines used for the Wii's LZ77 compression scheme.
 

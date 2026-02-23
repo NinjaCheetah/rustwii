@@ -1,5 +1,5 @@
-// title/commonkeys.rs from rustii-lib (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// title/commonkeys.rs from rustwii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 
 const COMMON_KEY: &str = "ebe42a225e8593e448d9c5457381aaf7";
 const KOREAN_KEY: &str = "63b82bb4f4614e2e13f2fefbba4c9b7e";

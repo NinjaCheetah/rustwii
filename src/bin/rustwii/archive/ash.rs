@@ -1,5 +1,5 @@
-// archive/ash.rs from rustii (c) 2025 NinjaCheetah & Contributors
-// https://github.com/NinjaCheetah/rustii
+// archive/ash.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// https://github.com/NinjaCheetah/rustwii
 //
 // Code for the ASH decompression command in the rustii CLI.
 // Might even have the compression command someday if I ever write the compression code!
@@ -8,7 +8,7 @@ use std::{str, fs};
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
-use rustii::archive::ash;
+use rustwii::archive::ash;
 
 #[derive(Subcommand)]
 #[command(arg_required_else_help = true)]
