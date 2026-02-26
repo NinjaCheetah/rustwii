@@ -60,6 +60,11 @@ enum Commands {
         #[command(subcommand)]
         command: nand::setting::Commands
     },
+    /// Apply custom themes to the Wii Menu
+    Theme {
+        #[command(subcommand)]
+        command: archive::theme::Commands
+    },
     /// Edit a TMD file
     Tmd {
         #[command(subcommand)]
@@ -149,7 +154,14 @@ fn main() -> Result<()> {
                 }
             }
         },
-        Some(Commands::Tmd { command}) => {
+        Some(Commands::Theme { command }) => {
+            match command {
+                archive::theme::Commands::ApplyMym { mym_path, base_path, output } => {
+                    archive::theme::theme_apply_mym(mym_path, base_path, output)?
+                }
+            }
+        },
+        Some(Commands::Tmd { command }) => {
             match command {
                 title::tmd::Commands::Edit { input, output, edits} => {
                     title::tmd::tmd_edit(input, output, edits)?

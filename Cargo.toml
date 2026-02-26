@@ -1,6 +1,6 @@
 [package]
 name = "rustwii"
-authors = ["NinjaCheetah <ninjacheetah@ncxprogramming.com>"]
+authors = ["NinjaCheetah <campbell@ninjacheetah.dev>"]
 license = "MIT"
 description = "A Rust library and CLI for handling files and formats used by the Wii"
 version = "0.1.0"
@@ -29,7 +29,7 @@ cbc = "0"
 aes = "0"
 rsa = { version = "0", features = ["sha2"] }
 hex = "0"
-sha1 = { version = "0", features = ["oid"]}
+sha1 = { version = "0", features = ["oid"] }
 glob = "0"
 regex = "1"
 clap = { version = "4", features = ["derive"] }
@@ -38,3 +38,4 @@ thiserror = "2"
 reqwest = { version = "0", features = ["blocking"] }
 rand = "0"
 walkdir = "2"
+tempfile = "3"

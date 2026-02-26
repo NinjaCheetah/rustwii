@@ -4,9 +4,7 @@
 // Code for the info command in the rustii CLI.
 
 use std::{str, fs};
-use std::cell::RefCell;
 use std::path::Path;
-use std::rc::Rc;
 use anyhow::{bail, Context, Result};
 use rustwii::archive::u8;
 use rustwii::{title, title::cert, title::tmd, title::ticket, title::wad, title::versions};
@@ -243,32 +241,32 @@ fn print_wad_info(wad: wad::WAD) -> Result<()> {
     Ok(())
 }
 
-fn print_full_tree(dir: &Rc<RefCell<u8::U8Directory>>, indent: usize) {
+fn print_full_tree(dir: &u8::U8Directory, indent: usize) {
     let prefix = "  ".repeat(indent);
-    let dir_name = if !dir.borrow().name.is_empty() {
-        &dir.borrow().name
+    let dir_name = if !dir.name.is_empty() {
+        &dir.name
     } else {
         &String::from("root")
     };
     println!("{}D {}", prefix, dir_name);
 
     // Print subdirectories
-    for subdir in &dir.borrow().dirs {
+    for subdir in &dir.dirs {
         print_full_tree(subdir, indent + 1);
     }
 
     // Print files
-    for file in &dir.borrow().files {
-        let file_name = &file.borrow().name;
+    for file in &dir.files {
+        let file_name = &file.name;
         println!("{}  F {}", prefix, file_name);
     }
 }
 
-fn print_u8_info(u8_archive: u8::U8Archive) -> Result<()> {
+fn print_u8_info(root_dir: u8::U8Directory) -> Result<()> {
     println!("U8 Archive Info");
-    println!("  Node Count: {}", u8_archive.node_tree.borrow().count());
+    println!("  Node Count: {}", root_dir.count());
     println!("  Archive Data:");
-    print_full_tree(&u8_archive.node_tree, 2);
+    print_full_tree(&root_dir, 2);
     Ok(())
 }
 
@@ -291,7 +289,7 @@ pub fn info(input: &str) -> Result<()> {
             print_wad_info(wad)?;
         },
         Some(WiiFileType::U8) => {
-            let u8_archive = u8::U8Archive::from_bytes(&fs::read(in_path)?).with_context(|| "The provided U8 archive could not be parsed, and is likely invalid.")?;
+            let u8_archive = u8::U8Directory::from_bytes(fs::read(in_path)?.into_boxed_slice()).with_context(|| "The provided U8 archive could not be parsed, and is likely invalid.")?;
             print_u8_info(u8_archive)?;
         }
         None => {

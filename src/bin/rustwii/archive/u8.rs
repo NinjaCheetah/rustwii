@@ -4,9 +4,7 @@
 // Code for the U8 packing/unpacking commands in the rustii CLI.
 
 use std::{str, fs};
-use std::cell::RefCell;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
 use glob::glob;
@@ -31,7 +29,7 @@ pub enum Commands {
     }
 }
 
-fn pack_dir_recursive(dir: &Rc<RefCell<u8::U8Directory>>, in_path: PathBuf) -> Result<()> {
+fn pack_dir_recursive(dir: &mut u8::U8Directory, in_path: PathBuf) -> Result<()> {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
     for entry in glob(&format!("{}/*", in_path.display()))?.flatten() {
@@ -43,13 +41,12 @@ fn pack_dir_recursive(dir: &Rc<RefCell<u8::U8Directory>>, in_path: PathBuf) -> R
     }
     for file in files {
         let node = u8::U8File::new(file.file_name().unwrap().to_str().unwrap().to_owned(), fs::read(file)?);
-        u8::U8Directory::add_file(dir, node);
+        dir.add_file(node);
     }
     for child_dir in dirs {
         let node = u8::U8Directory::new(child_dir.file_name().unwrap().to_str().unwrap().to_owned());
-        u8::U8Directory::add_dir(dir, node);
-        let dir = u8::U8Directory::get_child_dir(dir, child_dir.file_name().unwrap().to_str().unwrap()).unwrap();
-        pack_dir_recursive(&dir, child_dir)?;
+        let dir = dir.add_dir(node);
+        pack_dir_recursive(dir, child_dir)?;
     }
     Ok(())
 }
@@ -60,22 +57,21 @@ pub fn pack_u8_archive(input: &str, output: &str) -> Result<()> {
         bail!("Source directory \"{}\" could not be found.", in_path.display());
     }
     let out_path = PathBuf::from(output);
-    let node_tree = u8::U8Directory::new(String::new());
-    pack_dir_recursive(&node_tree, in_path.to_path_buf()).with_context(|| "A U8 archive could not be packed.")?;
-    let u8_archive = u8::U8Archive::from_tree(&node_tree).with_context(|| "An unknown error occurred while creating a U8 archive from the data.")?;
-    fs::write(&out_path, &u8_archive.to_bytes()?).with_context(|| format!("Could not open output file \"{}\" for writing.", out_path.display()))?;
+    let mut root_dir = u8::U8Directory::new(String::new());
+    pack_dir_recursive(&mut root_dir, in_path.to_path_buf()).with_context(|| "A U8 archive could not be packed.")?;
+    fs::write(&out_path, &root_dir.to_bytes()?).with_context(|| format!("Could not open output file \"{}\" for writing.", out_path.display()))?;
     println!("Successfully packed directory \"{}\" into U8 archive \"{}\"!", in_path.display(), out_path.display());
     Ok(())
 }
 
-fn unpack_dir_recursive(dir: &Rc<RefCell<u8::U8Directory>>, out_path: PathBuf) -> Result<()> {
-    let out_path = out_path.join(&dir.borrow().name);
-    for file in &dir.borrow().files {
-        fs::write(out_path.join(&file.borrow().name), &file.borrow().data).with_context(|| format!("Failed to write output file \"{}\".", &file.borrow().name))?;
+fn unpack_dir_recursive(dir: &u8::U8Directory, out_path: PathBuf) -> Result<()> {
+    let out_path = out_path.join(&dir.name);
+    for file in &dir.files {
+        fs::write(out_path.join(&file.name), &file.data).with_context(|| format!("Failed to write output file \"{}\".", &file.name))?;
     }
-    for dir in &dir.borrow().dirs {
-        if !out_path.join(&dir.borrow().name).exists() {
-            fs::create_dir(out_path.join(&dir.borrow().name)).with_context(|| format!("The output directory \"{}\" could not be created.", out_path.display()))?;
+    for dir in &dir.dirs {
+        if !out_path.join(&dir.name).exists() {
+            fs::create_dir(out_path.join(&dir.name)).with_context(|| format!("The output directory \"{}\" could not be created.", out_path.display()))?;
         }
         unpack_dir_recursive(dir, out_path.clone())?;
     }
@@ -97,8 +93,8 @@ pub fn unpack_u8_archive(input: &str, output: &str) -> Result<()> {
     }
     // Extract the files and directories in the root, and then recurse over each directory to
     // extract the files and directories they contain.
-    let u8_archive = u8::U8Archive::from_bytes(&fs::read(in_path).with_context(|| format!("Input file \"{}\" could not be read.", in_path.display()))?)?;
-    unpack_dir_recursive(&u8_archive.node_tree, out_path.clone())?;
+    let root_dir = u8::U8Directory::from_bytes(fs::read(in_path).with_context(|| format!("Input file \"{}\" could not be read.", in_path.display()))?.into_boxed_slice())?;
+    unpack_dir_recursive(&root_dir, out_path.clone())?;
     println!("Successfully unpacked U8 archive to directory \"{}\"!", out_path.display());
     Ok(())
 }

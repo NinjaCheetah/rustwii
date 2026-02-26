@@ -4,3 +4,4 @@
 pub mod ash;
 pub mod lz77;
 pub mod u8;
+pub mod theme;

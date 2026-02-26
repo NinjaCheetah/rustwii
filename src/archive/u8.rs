@@ -3,9 +3,8 @@
 //
 // Implements the structures and methods required for parsing U8 archives.
 
-use std::cell::RefCell;
+use std::cmp::max;
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
-use std::rc::{Rc, Weak};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use thiserror::Error;
 
@@ -26,83 +25,18 @@ pub enum U8Error {
 #[derive(Clone, Debug)]
 pub struct U8Directory {
     pub name: String,
-    pub parent: Option<Weak<RefCell<U8Directory>>>,
-    pub dirs: Vec<Rc<RefCell<U8Directory>>>,
-    pub files: Vec<Rc<RefCell<U8File>>>,
+    pub dirs: Vec<U8Directory>,
+    pub files: Vec<U8File>,
 }
 
 #[derive(Clone, Debug)]
 pub struct U8File {
     pub name: String,
     pub data: Vec<u8>,
-    pub parent: Option<Weak<RefCell<U8Directory>>>,
-}
-
-impl U8Directory {
-    pub fn new(name: String) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Self {
-            name,
-            parent: None,
-            dirs: Vec::new(),
-            files: Vec::new(),
-        }))
-    }
-
-    pub fn add_dir(parent: &Rc<RefCell<Self>>, child: Rc<RefCell<Self>>) {
-        child.borrow_mut().parent = Some(Rc::downgrade(parent));
-        parent.borrow_mut().dirs.push(child);
-    }
-
-    pub fn add_file(parent: &Rc<RefCell<Self>>, file: Rc<RefCell<U8File>>) {
-        file.borrow_mut().parent = Some(Rc::downgrade(parent));
-        parent.borrow_mut().files.push(file);
-    }
-
-    pub fn get_parent(&self) -> Option<Rc<RefCell<U8Directory>>> {
-        self.parent.as_ref()?.upgrade()
-    }
-
-    pub fn get_child_dir(parent: &Rc<RefCell<U8Directory>>, name: &str) -> Option<Rc<RefCell<U8Directory>>> {
-        parent.borrow().dirs.iter()
-            .find(|dir| dir.borrow().name == name)
-            .map(Rc::clone)
-    }
-    
-    fn count_recursive(dir: &Rc<RefCell<U8Directory>>, count: &mut usize) {
-        *count += dir.borrow().files.len();
-        for dir in dir.borrow().dirs.iter() {
-            *count += 1;
-            Self::count_recursive(dir, count);
-        }
-    }
-    
-    pub fn count(&self) -> usize {
-        let mut count: usize = 1;
-        count += self.files.len();
-        for dir in &self.dirs {
-            count += 1;
-            Self::count_recursive(dir, &mut count);
-        }
-        count
-    }
-}
-
-impl U8File {
-    pub fn new(name: String, data: Vec<u8>) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Self {
-            name,
-            data,
-            parent: None,
-        }))
-    }
-
-    pub fn get_parent(&self) -> Option<Rc<RefCell<U8Directory>>> {
-        self.parent.as_ref()?.upgrade()
-    }
 }
 
 #[derive(Clone, Debug)]
-pub struct U8Node {
+struct U8Node {
     pub node_type: u8,
     pub name_offset: u32, // This is really type u24, so the most significant byte will be ignored.
     pub data_offset: u32,
@@ -110,13 +44,15 @@ pub struct U8Node {
 }
 
 #[derive(Clone, Debug)]
-pub struct U8Archive {
-    pub node_tree: Rc<RefCell<U8Directory>>,
+struct U8Reader {
+    buf: Cursor<Box<[u8]>>,
+    u8_nodes: Vec<U8Node>,
+    index: usize,
+    base_name_offset: u64
 }
 
-impl U8Archive {
-    /// Creates a new U8 instance from the binary data of a U8 file.
-    pub fn from_bytes(data: &[u8]) -> Result<Self, U8Error> {
+impl U8Reader {
+    fn new(data: Box<[u8]>) -> Result<Self, U8Error> {
         let mut buf = Cursor::new(data);
         let mut magic = [0u8; 4];
         buf.read_exact(&mut magic)?;
@@ -135,7 +71,7 @@ impl U8Archive {
                 }
                 println!("ignoring IMET header at 0x40");
             }
-            // Check for an IMET header that comes after a built tag.
+            // Check for an IMET header that comes after a build tag.
             else {
                 buf.seek(SeekFrom::Start(0x80))?;
                 buf.read_exact(&mut magic)?;
@@ -150,6 +86,7 @@ impl U8Archive {
                 }
             }
         }
+
         // We're skipping the following values:
         // root_node_offset (u32): constant value, always 0x20
         // header_size (u32): we don't need this because we already know how long the string table is
@@ -168,6 +105,7 @@ impl U8Archive {
             data_offset: root_node_data_offset,
             size: root_node_size,
         };
+
         // Create a vec of nodes, push the root node, and then iterate over the remaining number
         // of nodes in the file and push them to the vec.
         let mut u8_nodes: Vec<U8Node> = Vec::new();
@@ -179,103 +117,131 @@ impl U8Archive {
             let size = buf.read_u32::<BigEndian>()?;
             u8_nodes.push(U8Node { node_type, name_offset, data_offset, size })
         }
-        // Iterate over the loaded nodes and load the file names and data associated with them.
+        // Save the base name offset for later.
         let base_name_offset = buf.position();
-        let mut file_names = Vec::<String>::new();
-        let mut file_data = Vec::<Vec<u8>>::new();
-        for node in &u8_nodes {
-            buf.seek(SeekFrom::Start(base_name_offset + node.name_offset as u64))?;
-            let mut name_bin = Vec::<u8>::new();
-            // Read the file name one byte at a time until we find a null byte.
-            loop {
-                let byte = buf.read_u8()?;
-                if byte == b'\0' {
-                    break;
-                }
-                name_bin.push(byte);
+
+        Ok(Self {
+            buf,
+            u8_nodes,
+            index: 0,
+            base_name_offset
+        })
+    }
+
+    fn file_name(&mut self, name_offset: u64) -> Result<String, U8Error> {
+        self.buf.seek(SeekFrom::Start(self.base_name_offset + name_offset))?;
+        let mut name_bin = Vec::<u8>::new();
+        loop {
+            let byte = self.buf.read_u8()?;
+            if byte == b'\0' {
+                break;
             }
-            file_names.push(String::from_utf8(name_bin).map_err(|_| U8Error::InvalidFileName(base_name_offset + node.name_offset as u64))?.to_owned());
-            // If this is a file node, read the data for the file.
-            if node.node_type == 0 {
-                buf.seek(SeekFrom::Start(node.data_offset as u64))?;
-                let mut data = vec![0u8; node.size as usize];
-                buf.read_exact(&mut data)?;
-                file_data.push(data);
-            } else {
-                file_data.push(Vec::new());
-            }
+            name_bin.push(byte);
         }
-        // Now that we have all the data loaded out of the file, assemble the tree of U8Items that
-        // provides an actual map of the archive's data.
-        let node_tree = U8Directory::new(String::new());
-        let mut focused_node = Rc::clone(&node_tree);
-        // This is the order of directory nodes we've traversed down.
-        let mut parent_dirs: Vec<u32> = Vec::from([0]);
-        for i in 0..u8_nodes.len() {
-            match u8_nodes[i].node_type {
+        Ok(String::from_utf8(name_bin)
+            .map_err(|_| U8Error::InvalidFileName(self.base_name_offset + name_offset))?.to_owned()
+        )
+    }
+
+    fn file_data(&mut self, data_offset: u64, size: usize) -> Result<Vec<u8>, U8Error> {
+        self.buf.seek(SeekFrom::Start(data_offset))?;
+        let mut data = vec![0u8; size];
+        self.buf.read_exact(&mut data)?;
+        Ok(data)
+    }
+
+    fn read_dir_recursive(&mut self) -> Result<U8Directory, U8Error> {
+        let mut current_dir = U8Directory::new(self.file_name(self.u8_nodes[self.index].name_offset as u64)?);
+
+        let current_dir_end = self.u8_nodes[self.index].size as usize;
+        self.index += 1;
+        while self.index < current_dir_end {
+            match self.u8_nodes[self.index].node_type {
                 1 => {
-                    // Code for a directory node.
-                    if u8_nodes[i].name_offset != 0 {
-                        // If we're already at the correct level, push a new empty dir item to the
-                        // item we're currently working on.
-                        if u8_nodes[i].data_offset == *parent_dirs.last().unwrap() {
-                            parent_dirs.push(i as u32);
-                            U8Directory::add_dir(&focused_node, U8Directory::new(file_names[i].clone()));
-                            focused_node = U8Directory::get_child_dir(&focused_node, &file_names[i]).unwrap();
-                        }
-                        // Otherwise, go back up the path until we're at the correct level.
-                        else {
-                            while u8_nodes[i].data_offset != *parent_dirs.last().unwrap() {
-                                parent_dirs.pop();
-                                let parent = focused_node.as_ref().borrow().get_parent().unwrap();
-                                focused_node = parent;
-                            }
-                            parent_dirs.push(i as u32);
-                            // Rebuild current working directory, and make sure all directories in the
-                            // path exist.
-                            U8Directory::add_dir(&focused_node, U8Directory::new(file_names[i].clone()));
-                            focused_node = U8Directory::get_child_dir(&focused_node, &file_names[i]).unwrap()
-                        }
-                    }
+                    // Directory node, recursive over the child dir and then add it to the
+                    // current one.
+                    let child_dir = self.read_dir_recursive()?;
+                    current_dir.add_dir(child_dir);
                 },
                 0 => {
-                    // Code for a file node.
-                    U8Directory::add_file(&focused_node, U8File::new(file_names[i].clone(), file_data[i].clone()));
+                    // File node, add
+                    current_dir.add_file(
+                        U8File::new(
+                            self.file_name(self.u8_nodes[self.index].name_offset as u64)?,
+                            self.file_data(self.u8_nodes[self.index].data_offset as u64, self.u8_nodes[self.index].size as usize)?
+                        )
+                    );
+                    self.index += 1;
                 },
-                x => return Err(U8Error::InvalidNodeType(x, i))
+                x => return Err(U8Error::InvalidNodeType(x, self.index))
             }
         }
-        Ok(U8Archive {
-            node_tree,
-        })
+
+        Ok(current_dir)
     }
-    
-    pub fn from_tree(node_tree: &Rc<RefCell<U8Directory>>) -> Result<Self, U8Error> {
-        Ok(U8Archive {
-            node_tree: node_tree.clone(),
-        })
+}
+
+impl U8Directory {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            dirs: vec![],
+            files: vec![]
+        }
     }
-    
-    fn pack_dir_recursive(file_names: &mut Vec<String>, file_data: &mut Vec<Vec<u8>>, u8_nodes: &mut Vec<U8Node>, current_node: &Rc<RefCell<U8Directory>>) {
-        // For files, read their data into the file data list, add their name into the file name 
-        // list, then calculate the offset for their file name and create a new U8Node() for them. 
+
+    pub fn dirs(&self) -> &Vec<U8Directory> {
+        &self.dirs
+    }
+
+    pub fn set_dirs(&mut self, dirs: Vec<U8Directory>) {
+        self.dirs = dirs
+    }
+
+    pub fn files(&self) -> &Vec<U8File> {
+        &self.files
+    }
+
+    pub fn set_files(&mut self, files: Vec<U8File>) {
+        self.files = files
+    }
+
+    pub fn add_dir(&mut self, child: Self) -> &mut U8Directory {
+        self.dirs.push(child);
+        self.dirs.last_mut().unwrap()
+    }
+
+    pub fn add_file(&mut self, file: U8File) {
+        self.files.push(file);
+    }
+
+    /// Creates a new U8 instance from the binary data of a U8 file.
+    pub fn from_bytes(data: Box<[u8]>) -> Result<Self, U8Error> {
+        let mut u8_reader = U8Reader::new(data)?;
+        u8_reader.read_dir_recursive()
+    }
+
+    fn pack_dir_recursive(&self, file_names: &mut Vec<String>, file_data: &mut Vec<Vec<u8>>, u8_nodes: &mut Vec<U8Node>) {
+        // For files, read their data into the file data list, add their name into the file name
+        // list, then calculate the offset for their file name and create a new U8Node() for them.
         // 0 values for name/data offsets are temporary and are set later.
         let parent_node = u8_nodes.len() - 1;
-        for file in &current_node.borrow().files {
-            file_names.push(file.borrow().name.clone());
-            file_data.push(file.borrow().data.clone());
+        for file in &self.files {
+            file_names.push(file.name.clone());
+            file_data.push(file.data.clone());
             u8_nodes.push(U8Node { node_type: 0, name_offset: 0, data_offset: 0, size: file_data[u8_nodes.len()].len() as u32});
         }
-        // For directories, add their name to the file name list, add empty data to the file data 
-        // list, find the total number of files and directories inside the directory to calculate 
-        // the final node included in it, then recursively call this function again on that 
+
+        // For directories, add their name to the file name list, add empty data to the file data
+        // list, find the total number of files and directories inside the directory to calculate
+        // the final node included in it, then recursively call this function again on that
         // directory to process it.
-        for dir in &current_node.borrow().dirs {
-            file_names.push(dir.borrow().name.clone());
+        for dir in &self.dirs {
+            file_names.push(dir.name.clone());
             file_data.push(Vec::new());
-            let max_node = u8_nodes.len() + current_node.borrow().count() + 1;
+            let max_node = u8_nodes.len() + dir.count();
             u8_nodes.push(U8Node { node_type: 1, name_offset: 0, data_offset: parent_node as u32, size: max_node as u32});
-            U8Archive::pack_dir_recursive(file_names, file_data, u8_nodes, dir)
+            dir.pack_dir_recursive(file_names, file_data, u8_nodes);
         }
     }
 
@@ -285,9 +251,9 @@ impl U8Archive {
         let mut file_names: Vec<String> = vec![String::new()];
         let mut file_data: Vec<Vec<u8>> = vec![Vec::new()];
         let mut u8_nodes: Vec<U8Node> = Vec::new();
-        u8_nodes.push(U8Node { node_type: 1, name_offset: 0, data_offset: 0, size: self.node_tree.borrow().count() as u32 });
-        let root_node = Rc::clone(&self.node_tree);
-        U8Archive::pack_dir_recursive(&mut file_names, &mut file_data, &mut u8_nodes, &root_node);
+        u8_nodes.push(U8Node { node_type: 1, name_offset: 0, data_offset: 0, size: self.count() as u32 });
+        self.pack_dir_recursive(&mut file_names, &mut file_data, &mut u8_nodes);
+
         // Header size starts at 0 because the header size starts with the nodes and does not
         // include the actual file header.
         let mut header_size: u32 = 0;
@@ -315,6 +281,7 @@ impl U8Archive {
             u8_nodes[i].name_offset = current_name_offset;
             current_name_offset += file_names[i].len() as u32 + 1
         }
+
         // Begin writing file data.
         let mut buf: Vec<u8> = Vec::new();
         buf.write_all(b"\x55\xAA\x38\x2D")?;
@@ -343,5 +310,27 @@ impl U8Archive {
             buf.resize((buf.len() + 31) & !31, 0);
         }
         Ok(buf)
+    }
+    
+    fn count_recursive(&self) -> usize {
+        let mut count = self.files.len() + self.dirs.len();
+
+        for dir in self.dirs.iter() {
+            count += dir.count_recursive();
+        }
+        count
+    }
+    
+    pub fn count(&self) -> usize {
+        1 + self.count_recursive()
+    }
+}
+
+impl U8File {
+    pub fn new(name: String, data: Vec<u8>) -> Self {
+        Self {
+            name,
+            data
+        }
     }
 }
