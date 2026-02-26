@@ -156,8 +156,8 @@ fn main() -> Result<()> {
         },
         Some(Commands::Theme { command }) => {
             match command {
-                archive::theme::Commands::ApplyMym { mym_path, base_path, output } => {
-                    archive::theme::theme_apply_mym(mym_path, base_path, output)?
+                archive::theme::Commands::ApplyMym { mym, base, output } => {
+                    archive::theme::theme_apply_mym(mym, base, output)?
                 }
             }
         },

@@ -3,7 +3,6 @@
 //
 // Implements the structures and methods required for parsing U8 archives.
 
-use std::cmp::max;
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use thiserror::Error;

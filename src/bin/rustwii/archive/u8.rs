@@ -29,7 +29,7 @@ pub enum Commands {
     }
 }
 
-fn pack_dir_recursive(dir: &mut u8::U8Directory, in_path: PathBuf) -> Result<()> {
+pub fn pack_dir_recursive(dir: &mut u8::U8Directory, in_path: PathBuf) -> Result<()> {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
     for entry in glob(&format!("{}/*", in_path.display()))?.flatten() {
@@ -64,7 +64,7 @@ pub fn pack_u8_archive(input: &str, output: &str) -> Result<()> {
     Ok(())
 }
 
-fn unpack_dir_recursive(dir: &u8::U8Directory, out_path: PathBuf) -> Result<()> {
+pub fn unpack_dir_recursive(dir: &u8::U8Directory, out_path: PathBuf) -> Result<()> {
     let out_path = out_path.join(&dir.name);
     for file in &dir.files {
         fs::write(out_path.join(&file.name), &file.data).with_context(|| format!("Failed to write output file \"{}\".", &file.name))?;
