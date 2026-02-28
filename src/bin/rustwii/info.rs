@@ -1,7 +1,7 @@
 // info.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code for the info command in the rustii CLI.
+// Code for the info command in the rustwii CLI.
 
 use std::{str, fs};
 use std::path::Path;

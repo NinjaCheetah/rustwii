@@ -1,7 +1,7 @@
 // main.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Base for the rustii CLI that handles argument parsing and directs execution to the proper module.
+// Base for the rustwii CLI that handles argument parsing and directs execution to the proper module.
 
 mod archive;
 mod title;
@@ -36,7 +36,7 @@ enum Commands {
     Fakesign {
         /// The path to a TMD, Ticket, or WAD
         input: String,
-        /// An (optional) output name; defaults to overwriting input file if not provided
+        /// An optional output path; defaults to overwriting input file if not provided
         #[arg(short, long)]
         output: Option<String>,
     },
@@ -44,6 +44,25 @@ enum Commands {
     Info {
         /// The path to a TMD, Ticket, or WAD
         input: String,
+    },
+    /// Apply patches to an IOS
+    IosPatch {
+        /// The IOS WAD to apply patches to
+        input: String,
+        #[arg(short, long)]
+        /// An optional output path; default to overwriting input file if not provided
+        output: Option<String>,
+        /// Set a new IOS version (0-65535)
+        #[arg(short, long)]
+        version: Option<u16>,
+        /// Set the slot that this IOS will install into
+        #[arg(short, long)]
+        slot: Option<u8>,
+        /// Set all patched content to be non-shared
+        #[arg(short, long, action)]
+        no_shared: bool,
+        #[command(flatten)]
+        enabled_patches: title::iospatcher::EnabledPatches,
     },
     /// Compress/decompress data using LZ77 compression
     Lz77 {
@@ -118,6 +137,24 @@ fn main() -> Result<()> {
         Some(Commands::Info { input }) => {
             info::info(input)?
         },
+        Some(Commands::IosPatch {
+                input,
+                output,
+                version,
+                slot,
+                no_shared,
+                enabled_patches
+             }
+        ) => {
+            title::iospatcher::patch_ios(
+                input,
+                output,
+                version,
+                slot,
+                no_shared,
+                enabled_patches,
+            )?
+        }
         Some(Commands::Lz77 { command }) => {
             match command {
                 archive::lz77::Commands::Compress { input, output } => {

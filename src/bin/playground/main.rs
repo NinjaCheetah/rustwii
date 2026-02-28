@@ -7,8 +7,15 @@ use rustwii::archive::u8;
 // use rustii::title::content;
 
 fn main() {
-    let data = fs::read("sm.wad").unwrap();
-    let title = title::Title::from_bytes(&data).unwrap();
+    let data = fs::read("ios9.wad").unwrap();
+    let mut title = title::Title::from_bytes(&data).unwrap();
+
+    let index = title::iospatcher::ios_find_module(String::from("ES:"), &title).unwrap();
+    println!("ES index: {}", index);
+
+    let patch_count = title::iospatcher::ios_patch_sigchecks(&mut title, index).unwrap();
+    println!("patches applied: {}", patch_count);
+
     println!("Title ID from WAD via Title object: {}", hex::encode(title.tmd.title_id()));
 
     let wad = wad::WAD::from_bytes(&data).unwrap();
@@ -41,16 +48,9 @@ fn main() {
 
     let result = title.verify().unwrap();
     println!("full title verified successfully: {}", result);
-    
-    
 
     let u8_archive = u8::U8Directory::from_bytes(fs::read("testu8.arc").unwrap().into_boxed_slice()).unwrap();
     println!("{:#?}", u8_archive);
-    // println!("files and dirs counted: {}", u8_archive.node_tree.borrow().count());
-    // fs::write("outfile.arc", u8_archive.to_bytes().unwrap()).unwrap();
-    // println!("re-written");
-    
-    
     
     // let mut content_map = content::SharedContentMap::from_bytes(&fs::read("content.map").unwrap()).unwrap();
     // content_map.add(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();

@@ -1,7 +1,7 @@
 // title/nus.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code for NUS-related commands in the rustii CLI.
+// Code for NUS-related commands in the rustwii CLI.
 
 use std::{str, fs};
 use std::path::PathBuf;

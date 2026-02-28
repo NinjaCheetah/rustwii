@@ -1,7 +1,7 @@
 // archive/ash.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code for the ASH decompression command in the rustii CLI.
+// Code for the ASH decompression command in the rustwii CLI.
 // Might even have the compression command someday if I ever write the compression code!
 
 use std::{str, fs};

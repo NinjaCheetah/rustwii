@@ -1,7 +1,7 @@
 // archive/lz77.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code for the LZ77 compression/decompression commands in the rustii CLI.
+// Code for the LZ77 compression/decompression commands in the rustwii CLI.
 
 use std::{str, fs};
 use std::path::{Path, PathBuf};

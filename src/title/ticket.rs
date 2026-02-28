@@ -212,6 +212,10 @@ impl Ticket {
     pub fn title_version(&self) -> u16 {
         self.title_version
     }
+    
+    pub fn set_title_version(&mut self, version: u16) {
+        self.title_version = version;
+    }
 
     /// Gets the permitted titles mask listed in the Ticket.
     pub fn permitted_titles_mask(&self) -> [u8; 4] {

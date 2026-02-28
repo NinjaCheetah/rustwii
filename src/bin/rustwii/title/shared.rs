@@ -1,7 +1,7 @@
 // title/shared.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code shared between title commands in the rustii CLI.
+// Code shared between title commands in the rustwii CLI.
 
 use anyhow::bail;
 use clap::Args;

@@ -393,6 +393,10 @@ impl TMD {
         self.title_type = new_type;
         Ok(())
     }
+    
+    pub fn set_title_version(&mut self, version: u16) {
+        self.title_version = version;
+    }
 
     /// Gets the type of content described by a content record in a TMD.
     pub fn content_type(&self, index: usize) -> ContentType {

@@ -7,6 +7,7 @@ pub mod cert;
 pub mod commonkeys;
 pub mod content;
 pub mod crypto;
+pub mod iospatcher;
 pub mod nus;
 pub mod ticket;
 pub mod tmd;
@@ -137,6 +138,7 @@ impl Title {
     /// content type can be provided, with the existing values being preserved by default.
     pub fn set_content(&mut self, content: &[u8], index: usize, cid: Option<u32>, content_type: Option<tmd::ContentType>) -> Result<(), TitleError> {
         self.content.set_content(content, index, cid, content_type, self.ticket.title_key_dec())?;
+        self.tmd.set_content_records(self.content.content_records());
         Ok(())
     }
 
@@ -146,6 +148,7 @@ impl Title {
     /// content records.
     pub fn add_content(&mut self, content: &[u8], cid: u32, content_type: tmd::ContentType) -> Result<(), TitleError> {
         self.content.add_content(content, cid, content_type, self.ticket.title_key_dec())?;
+        self.tmd.set_content_records(self.content.content_records());
         Ok(())
     }
     
@@ -193,6 +196,11 @@ impl Title {
         self.tmd.set_title_id(title_id);
         self.ticket.set_title_id(title_id);
         Ok(())
+    }
+
+    pub fn set_title_version(&mut self, version: u16) {
+        self.tmd.set_title_version(version);
+        self.ticket.set_title_version(version);
     }
 
     pub fn set_cert_chain(&mut self, cert_chain: cert::CertificateChain) {

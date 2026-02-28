@@ -1,7 +1,7 @@
 // archive/theme.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code for the theme building commands in the rustii CLI.
+// Code for the theme building commands in the rustwii CLI.
 
 use std::collections::HashMap;
 use std::fs;

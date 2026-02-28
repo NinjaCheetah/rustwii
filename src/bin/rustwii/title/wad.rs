@@ -1,7 +1,7 @@
 // title/wad.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code for WAD-related commands in the rustii CLI.
+// Code for WAD-related commands in the rustwii CLI.
 
 use std::{str, fs, fmt};
 use std::path::{Path, PathBuf};
