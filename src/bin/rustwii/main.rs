@@ -188,6 +188,9 @@ fn main() -> Result<()> {
                 },
                 nand::setting::Commands::Encrypt { input, output } => {
                     nand::setting::encrypt_setting(input, output)?;
+                },
+                nand::setting::Commands::Gen { serno, region } => {
+                    nand::setting::generate_setting(serno, region)?;
                 }
             }
         },
