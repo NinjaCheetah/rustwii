@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use anyhow::{bail, Context, Result};
 use clap::{Subcommand, Args};
 use sha1::{Sha1, Digest};
-use rustwii::title::{cert, content, crypto, nus, ticket, tmd};
+use rustwii::title::{cert, crypto, nus, ticket, tmd};
 use rustwii::title;
 
 #[derive(Subcommand)]
@@ -159,15 +159,15 @@ fn download_title_dir(title: title::Title, output: String) -> Result<()> {
     } else {
         fs::create_dir(&out_path).with_context(|| format!("The output directory \"{}\" could not be created.", out_path.display()))?;
     }
-    let tid = hex::encode(title.tmd.title_id());
+    let tid = hex::encode(title.tmd().title_id());
     println!("  - Saving TMD...");
-    fs::write(out_path.join(format!("{}.tmd", &tid)), title.tmd.to_bytes()?).with_context(|| format!("Failed to open TMD file \"{}.tmd\" for writing.", tid))?;
+    fs::write(out_path.join(format!("{}.tmd", &tid)), title.tmd().to_bytes()?).with_context(|| format!("Failed to open TMD file \"{}.tmd\" for writing.", tid))?;
     println!("  - Saving Ticket...");
-    fs::write(out_path.join(format!("{}.tik", &tid)), title.ticket.to_bytes()?).with_context(|| format!("Failed to open Ticket file \"{}.tmd\" for writing.", tid))?;
+    fs::write(out_path.join(format!("{}.tik", &tid)), title.ticket().to_bytes()?).with_context(|| format!("Failed to open Ticket file \"{}.tmd\" for writing.", tid))?;
     println!("  - Saving certificate chain...");
-    fs::write(out_path.join(format!("{}.cert", &tid)), title.cert_chain.to_bytes()?).with_context(|| format!("Failed to open certificate chain file \"{}.cert\" for writing.", tid))?;
+    fs::write(out_path.join(format!("{}.cert", &tid)), title.cert_chain().to_bytes()?).with_context(|| format!("Failed to open certificate chain file \"{}.cert\" for writing.", tid))?;
     // Iterate over the content files and write them out in encrypted form.
-    for record in title.content.content_records().iter() {
+    for record in title.tmd().content_records().iter() {
         println!("  - Decrypting and saving content with Content ID {}...", record.content_id);
         fs::write(out_path.join(format!("{:08X}.app", record.content_id)), title.get_content_by_cid(record.content_id)?)
             .with_context(|| format!("Failed to open content file \"{:08X}.app\" for writing.", record.content_id))?;
@@ -176,7 +176,7 @@ fn download_title_dir(title: title::Title, output: String) -> Result<()> {
     Ok(())
 }
 
-fn download_title_dir_enc(tmd: tmd::TMD, content_region: content::ContentRegion, cert_chain: cert::CertificateChain, output: String) -> Result<()> {
+fn download_title_dir_enc(tmd: tmd::TMD, contents: Vec<Vec<u8>>, cert_chain: cert::CertificateChain, output: String) -> Result<()> {
     println!(" - Saving downloaded data...");
     let out_path = PathBuf::from(output);
     if out_path.exists() {
@@ -192,9 +192,10 @@ fn download_title_dir_enc(tmd: tmd::TMD, content_region: content::ContentRegion,
     println!("  - Saving certificate chain...");
     fs::write(out_path.join(format!("{}.cert", &tid)), cert_chain.to_bytes()?).with_context(|| format!("Failed to open certificate chain file \"{}.cert\" for writing.", tid))?;
     // Iterate over the content files and write them out in encrypted form.
-    for record in content_region.content_records().iter() {
+    for record in tmd.content_records().iter() {
         println!("  - Saving content with Content ID {}...", record.content_id);
-        fs::write(out_path.join(format!("{:08X}", record.content_id)), content_region.get_enc_content_by_cid(record.content_id)?)
+        let idx = tmd.get_index_from_cid(record.content_id)?;
+        fs::write(out_path.join(format!("{:08X}", record.content_id)), &contents[idx])
             .with_context(|| format!("Failed to open content file \"{:08X}\" for writing.", record.content_id))?;
     }
     println!("Successfully downloaded title with Title ID {} to directory \"{}\"!", tid, out_path.display());
@@ -205,7 +206,7 @@ fn download_title_wad(title: title::Title, output: String) -> Result<()> {
     println!(" - Packing WAD...");
     let out_path = PathBuf::from(output).with_extension("wad");
     fs::write(&out_path, title.to_wad().with_context(|| "A WAD could not be packed.")?.to_bytes()?).with_context(|| format!("Could not open WAD file \"{}\" for writing.", out_path.display()))?;
-    println!("Successfully downloaded title with Title ID {} to WAD file \"{}\"!", hex::encode(title.tmd.title_id()), out_path.display());
+    println!("Successfully downloaded title with Title ID {} to WAD file \"{}\"!", hex::encode(title.tmd().title_id()), out_path.display());
     Ok(())
 }
 
@@ -242,12 +243,11 @@ pub fn download_title(tid: &str, version: &Option<u16>, output: &TitleOutputType
         contents.push(nus::download_content(tid, record.content_id, true).with_context(|| format!("Content with Content ID {} could not be downloaded.", record.content_id))?);
         println!("   - Done!");
     }
-    let content_region = content::ContentRegion::from_contents(contents, tmd.content_records().clone())?;
     println!(" - Building certificate chain...");
     let cert_chain = cert::CertificateChain::from_bytes(&nus::download_cert_chain(true).with_context(|| "Certificate chain could not be built.")?)?;
     if let Some(tik) = tik {
         // If we have a Ticket, then build a Title and jump to the output method.
-        let title = title::Title::from_parts(cert_chain, None, tik, tmd, content_region, None)?;
+        let title = title::Title::from_parts_with_content(cert_chain, None, tik, tmd, contents, None)?;
         if output.wad.is_some() {
             download_title_wad(title, output.wad.clone().unwrap())?;
         } else {
@@ -256,7 +256,7 @@ pub fn download_title(tid: &str, version: &Option<u16>, output: &TitleOutputType
     } else {
         // If we're downloading to a directory and have no Ticket, save the TMD and encrypted
         // contents to the directory only.
-        download_title_dir_enc(tmd, content_region, cert_chain, output.output.clone().unwrap())?;
+        download_title_dir_enc(tmd, contents, cert_chain, output.output.clone().unwrap())?;
     }
     Ok(())
 }

@@ -39,7 +39,7 @@ fn print_title_version(title_version: u16, title_id: [u8; 8], is_vwii: bool) -> 
     Ok(())
 }
 
-fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> {
+fn print_tmd_info(tmd: &tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> {
     // Print all important keys from the TMD.
     println!("Title Info");
     print_tid(tmd.title_id())?;
@@ -91,7 +91,7 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
     println!("  DVD Video Access: {}", tmd.check_access_right(tmd::AccessRight::DVDVideo));
     println!("  AHB Access: {}", tmd.check_access_right(tmd::AccessRight::AHB));
     if let Some(cert) = cert {
-        let signing_str = match cert::verify_tmd(&cert, &tmd) {
+        let signing_str = match cert::verify_tmd(&cert, tmd) {
             Ok(result) => match result {
                 true => "Valid (Unmodified TMD)",
                 false => {
@@ -128,7 +128,7 @@ fn print_tmd_info(tmd: tmd::TMD, cert: Option<cert::Certificate>) -> Result<()> 
     Ok(())
 }
 
-fn print_ticket_info(ticket: ticket::Ticket, cert: Option<cert::Certificate>) -> Result<()> {
+fn print_ticket_info(ticket: &ticket::Ticket, cert: Option<cert::Certificate>) -> Result<()> {
     // Print all important keys from the Ticket.
     println!("Ticket Info");
     print_tid(ticket.title_id())?;
@@ -160,7 +160,7 @@ fn print_ticket_info(ticket: ticket::Ticket, cert: Option<cert::Certificate>) ->
     println!("  Title Key (Encrypted): {}", hex::encode(ticket.title_key()));
     println!("  Title Key (Decrypted): {}", hex::encode(ticket.title_key_dec()));
     if let Some(cert) = cert {
-        let signing_str = match cert::verify_ticket(&cert, &ticket) {
+        let signing_str = match cert::verify_ticket(&cert, ticket) {
             Ok(result) => match result {
                 true => "Valid (Unmodified Ticket)",
                 false => {
@@ -216,9 +216,9 @@ fn print_wad_info(wad: wad::WAD) -> Result<()> {
             false => {
                 if title.is_fakesigned() {
                     "Fakesigned"
-                } else if cert::verify_tmd(&title.cert_chain.tmd_cert(), &title.tmd)? {
+                } else if cert::verify_tmd(&title.cert_chain().tmd_cert(), title.tmd())? {
                     "Piratelegit (Unmodified TMD, Modified Ticket)"
-                } else if  cert::verify_ticket(&title.cert_chain.ticket_cert(), &title.ticket)? {
+                } else if  cert::verify_ticket(&title.cert_chain().ticket_cert(), title.ticket())? {
                     "Edited (Modified TMD, Unmodified Ticket)"
                 } else {
                     "Illegitimate (Modified TMD + Ticket)"
@@ -235,9 +235,9 @@ fn print_wad_info(wad: wad::WAD) -> Result<()> {
     };
     println!("  Signing Status: {}", signing_str);
     println!();
-    print_ticket_info(title.ticket, Some(title.cert_chain.ticket_cert()))?;
+    print_ticket_info(title.ticket(), Some(title.cert_chain().ticket_cert()))?;
     println!();
-    print_tmd_info(title.tmd, Some(title.cert_chain.tmd_cert()))?;
+    print_tmd_info(title.tmd(), Some(title.cert_chain().tmd_cert()))?;
     Ok(())
 }
 
@@ -278,11 +278,11 @@ pub fn info(input: &str) -> Result<()> {
     match identify_file_type(input) {
         Some(WiiFileType::Tmd) => {
             let tmd = tmd::TMD::from_bytes(&fs::read(in_path)?).with_context(|| "The provided TMD file could not be parsed, and is likely invalid.")?;
-            print_tmd_info(tmd, None)?;
+            print_tmd_info(&tmd, None)?;
         },
         Some(WiiFileType::Ticket) => {
             let ticket = ticket::Ticket::from_bytes(&fs::read(in_path)?).with_context(|| "The provided Ticket file could not be parsed, and is likely invalid.")?;
-            print_ticket_info(ticket, None)?;
+            print_ticket_info(&ticket, None)?;
         },
         Some(WiiFileType::Wad) => {
             let wad = wad::WAD::from_bytes(&fs::read(in_path)?).with_context(|| "The provided WAD file could not be parsed, and is likely invalid.")?;

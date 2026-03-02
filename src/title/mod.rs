@@ -5,7 +5,6 @@
 
 pub mod cert;
 pub mod commonkeys;
-pub mod content;
 pub mod crypto;
 pub mod iospatcher;
 pub mod nus;
@@ -14,6 +13,8 @@ pub mod tmd;
 pub mod versions;
 pub mod wad;
 
+use std::io::{Cursor, Read, Seek, SeekFrom, Write};
+use sha1::{Sha1, Digest};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -28,22 +29,33 @@ pub enum TitleError {
     TMD(#[from] tmd::TMDError),
     #[error("Ticket processing error")]
     Ticket(#[from] ticket::TicketError),
-    #[error("content processing error")]
-    Content(#[from] content::ContentError),
     #[error("WAD processing error")]
     WAD(#[from] wad::WADError),
     #[error("WAD data is not in a valid format")]
     IO(#[from] std::io::Error),
+    // Content-specific (not generic or inherited from another struct's errors).
+    #[error("requested index {index} is out of range (must not exceed {max})")]
+    IndexOutOfRange { index: usize, max: usize },
+    #[error("expected {required} contents based on content records but found {found}")]
+    MissingContents { required: usize, found: usize },
+    #[error("content with requested Content ID {0} could not be found")]
+    CIDNotFound(u32),
+    #[error("the specified index {0} already exists in the content records")]
+    IndexAlreadyExists(u16),
+    #[error("the specified Content ID {0} already exists in the content records")]
+    CIDAlreadyExists(u32),
+    #[error("content's hash did not match the expected value (was {hash}, expected {expected})")]
+    BadHash { hash: String, expected: String },
 }
 
 #[derive(Debug)]
 /// A structure that represents the components of a digital Wii title.
 pub struct Title {
-    pub cert_chain: cert::CertificateChain,
+    cert_chain: cert::CertificateChain,
     crl: Vec<u8>,
-    pub ticket: ticket::Ticket,
-    pub tmd: tmd::TMD,
-    pub content: content::ContentRegion,
+    ticket: ticket::Ticket,
+    tmd: tmd::TMD,
+    content: Vec<Vec<u8>>,
     meta: Vec<u8>
 }
 
@@ -53,7 +65,7 @@ impl Title {
         let cert_chain = cert::CertificateChain::from_bytes(&wad.cert_chain()).map_err(TitleError::CertificateError)?;
         let ticket = ticket::Ticket::from_bytes(&wad.ticket()).map_err(TitleError::Ticket)?;
         let tmd = tmd::TMD::from_bytes(&wad.tmd()).map_err(TitleError::TMD)?;
-        let content = content::ContentRegion::from_bytes(&wad.content(), tmd.content_records().clone()).map_err(TitleError::Content)?;
+        let content = Self::parse_content_region(wad.content(), tmd.content_records())?;
         Ok(Title {
             cert_chain,
             crl: wad.crl(),
@@ -65,8 +77,18 @@ impl Title {
     }
     
     /// Creates a new Title instance from all of its individual components.
-    pub fn from_parts(cert_chain: cert::CertificateChain, crl: Option<&[u8]>, ticket: ticket::Ticket, tmd: tmd::TMD,
-                      content: content::ContentRegion, meta: Option<&[u8]>) -> Result<Title, TitleError> {
+    pub fn from_parts_with_content(
+        cert_chain: cert::CertificateChain,
+        crl: Option<&[u8]>,
+        ticket: ticket::Ticket,
+        tmd: tmd::TMD,
+        content: Vec<Vec<u8>>,
+        meta: Option<&[u8]>
+    ) -> Result<Title, TitleError> {
+        // Validate the provided content.
+        if content.len() != tmd.content_records().len() {
+            return Err(TitleError::MissingContents { required: tmd.content_records().len(), found: content.len()});
+        }
         // Create empty vecs for the CRL and meta areas if we weren't supplied with any, as they're
         // optional components.
         let crl = match crl {
@@ -86,16 +108,68 @@ impl Title {
             meta
         })
     }
+
+    /// Creates a new Title instance from all of its individual components. Content is expected to
+    /// be added to the title once created.
+    pub fn from_parts(
+        cert_chain: cert::CertificateChain,
+        crl: Option<&[u8]>,
+        ticket: ticket::Ticket,
+        tmd: tmd::TMD,
+        meta: Option<&[u8]>
+    ) -> Result<Title, TitleError> {
+        let content: Vec<Vec<u8>> = vec![vec![]; tmd.content_records().len()];
+        Self::from_parts_with_content(
+            cert_chain,
+            crl,
+            ticket,
+            tmd,
+            content,
+            meta
+        )
+    }
+
+    fn parse_content_region(content_data: Vec<u8>, content_records: &[tmd::ContentRecord]) -> Result<Vec<Vec<u8>>, TitleError> {
+        let num_contents = content_records.len();
+        // Calculate the starting offsets of each content.
+        let content_start_offsets: Vec<u64> = std::iter::once(0)
+            .chain(content_records.iter().scan(0, |offset, record| {
+                *offset += record.content_size;
+                if record.content_size % 64 != 0 {
+                    *offset += 64 - (record.content_size % 64);
+                }
+                Some(*offset)
+            })).take(content_records.len()).collect(); // Trims the extra final entry.
+        // Parse the content blob and create a vector of vectors from it.
+        let mut contents: Vec<Vec<u8>> = Vec::with_capacity(num_contents);
+        let mut buf = Cursor::new(content_data);
+        for i in 0..num_contents {
+            buf.seek(SeekFrom::Start(content_start_offsets[i]))?;
+            let size = (content_records[i].content_size + 15) & !15;
+            let mut content = vec![0u8; size as usize];
+            buf.read_exact(&mut content)?;
+            contents.push(content);
+        }
+
+        Ok(contents)
+    }
     
     /// Converts a Title instance into a WAD, which can be used to export the Title back to a file.
     pub fn to_wad(&self) -> Result<wad::WAD, TitleError> {
+        let mut content: Vec<u8> = Vec::new();
+        for i in 0..self.tmd.content_records().len() {
+            let mut content_cur = self.content[i].clone();
+            // Round up size to nearest 64 to add appropriate padding.
+            content_cur.resize((content_cur.len() + 63) & !63, 0);
+            content.write_all(&content_cur)?;
+        }
         // Create a new WAD from the data in the Title.
         let wad = wad::WAD::from_parts(
             &self.cert_chain,
             &self.crl,
             &self.ticket,
             &self.tmd,
-            &self.content,
+            &content,
             &self.meta
         ).map_err(TitleError::WAD)?;
         Ok(wad)
@@ -106,6 +180,18 @@ impl Title {
         let wad = wad::WAD::from_bytes(bytes).map_err(|_| TitleError::InvalidWAD)?;
         let title = Title::from_wad(&wad)?;
         Ok(title)
+    }
+
+    pub fn cert_chain(&self) -> &cert::CertificateChain {
+        &self.cert_chain
+    }
+
+    pub fn ticket(&self) -> &ticket::Ticket {
+        &self.ticket
+    }
+
+    pub fn tmd(&self) -> &tmd::TMD {
+        &self.tmd
     }
     
     /// Gets whether the TMD and Ticket of a Title are both fakesigned.
@@ -120,25 +206,176 @@ impl Title {
         self.ticket.fakesign().map_err(TitleError::Ticket)?;
         Ok(())
     }
-    
+
+    /// Gets the encrypted content file from the ContentRegion at the specified index.
+    pub fn get_enc_content_by_index(&self, index: usize) -> Result<Vec<u8>, TitleError> {
+        let content = self.content.get(index).ok_or(
+            TitleError::IndexOutOfRange { index, max: self.tmd.content_records().len() - 1 }
+        )?;
+        Ok(content.clone())
+    }
+
     /// Gets the decrypted content file from the Title at the specified index.
-    pub fn get_content_by_index(&self, index: usize) -> Result<Vec<u8>, content::ContentError> {
-        let content = self.content.get_content_by_index(index, self.ticket.title_key_dec())?;
-        Ok(content)
+    pub fn get_content_by_index(&self, index: usize) -> Result<Vec<u8>, TitleError> {
+        let content = self.get_enc_content_by_index(index)?;
+        // Verify the hash of the decrypted content against its record.
+        let mut content_dec = crypto::decrypt_content(&content, self.ticket.title_key_dec(), self.tmd.content_records()[index].index);
+        content_dec.resize(self.tmd.content_records()[index].content_size as usize, 0);
+        let mut hasher = Sha1::new();
+        hasher.update(content_dec.clone());
+        let result = hasher.finalize();
+        if result[..] != self.tmd.content_records()[index].content_hash {
+            return Err(TitleError::BadHash {
+                hash: hex::encode(result), expected: hex::encode(self.tmd.content_records()[index].content_hash)
+            });
+        }
+        Ok(content_dec)
+    }
+
+    /// Gets the encrypted content file from the ContentRegion with the specified Content ID.
+    pub fn get_enc_content_by_cid(&self, cid: u32) -> Result<Vec<u8>, TitleError> {
+        let index = self.tmd.content_records().iter().position(|x| x.content_id == cid);
+        if let Some(index) = index {
+            let content = self.get_enc_content_by_index(index).map_err(|_| TitleError::CIDNotFound(cid))?;
+            Ok(content)
+        } else {
+            Err(TitleError::CIDNotFound(cid))
+        }
     }
     
     /// Gets the decrypted content file from the Title with the specified Content ID.
-    pub fn get_content_by_cid(&self, cid: u32) -> Result<Vec<u8>, content::ContentError> {
-        let content = self.content.get_content_by_cid(cid, self.ticket.title_key_dec())?;
-        Ok(content)
+    pub fn get_content_by_cid(&self, cid: u32) -> Result<Vec<u8>, TitleError> {
+        let index = self.tmd.content_records().iter().position(|x| x.content_id == cid);
+        if let Some(index) = index {
+            let content_dec = self.get_content_by_index(index)?;
+            Ok(content_dec)
+        } else {
+            Err(TitleError::CIDNotFound(cid))
+        }
+    }
+
+    /// Loads existing content into the specified index of a ContentRegion instance. This content
+    /// must be encrypted.
+    pub fn load_enc_content(&mut self, content: &[u8], index: usize) -> Result<(), TitleError> {
+        if index >= self.tmd.content_records().len() {
+            return Err(TitleError::IndexOutOfRange { index, max: self.tmd.content_records().len() - 1 });
+        }
+        self.content[index] = content.to_vec();
+        Ok(())
+    }
+
+    /// Sets the content at the specified index to the provided encrypted content. This requires
+    /// the size and hash of the original decrypted content to be known so that the appropriate
+    /// values can be set in the corresponding content record. Optionally, a new Content ID or
+    /// content type can be provided, with the existing values being preserved by default.
+    pub fn set_enc_content(
+        &mut self, content: &[u8],
+        index: usize, content_size: u64,
+        content_hash: [u8; 20],
+        cid: Option<u32>,
+        content_type: Option<tmd::ContentType>
+    ) -> Result<(), TitleError> {
+        if index >= self.tmd.content_records().len() {
+            return Err(TitleError::IndexOutOfRange { index, max: self.tmd.content_records().len() - 1 });
+        }
+        let mut content_records = self.tmd.content_records().clone();
+        content_records[index].content_size = content_size;
+        content_records[index].content_hash = content_hash;
+        if let Some(cid) = cid {
+            // Make sure that the new CID isn't already in use.
+            if content_records.iter().any(|record| record.content_id == cid) {
+                return Err(TitleError::CIDAlreadyExists(cid));
+            }
+            content_records[index].content_id = cid;
+        }
+        if let Some(content_type) = content_type {
+            content_records[index].content_type = content_type;
+        }
+        self.tmd.set_content_records(content_records);
+        self.content[index] = content.to_vec();
+        Ok(())
+    }
+
+    /// Loads existing content into the specified index of a ContentRegion instance. This content
+    /// must be decrypted and needs to match the size and hash listed in the content record at that
+    /// index.
+    pub fn load_content(&mut self, content: &[u8], index: usize) -> Result<(), TitleError> {
+        if index >= self.tmd.content_records().len() {
+            return Err(TitleError::IndexOutOfRange { index, max: self.tmd.content_records().len() - 1 });
+        }
+        // Hash the content we're trying to load to ensure it matches the hash expected in the
+        // matching record.
+        let mut hasher = Sha1::new();
+        hasher.update(content);
+        let result = hasher.finalize();
+        if result[..] != self.tmd.content_records()[index].content_hash {
+            return Err(TitleError::BadHash {
+                hash: hex::encode(result), expected: hex::encode(self.tmd.content_records()[index].content_hash)
+            });
+        }
+        let content_enc = crypto::encrypt_content(
+            content,
+            self.ticket.title_key_dec(),
+            self.tmd.content_records()[index].index,
+            self.tmd.content_records()[index].content_size
+        );
+        self.content[index] = content_enc;
+        Ok(())
     }
 
     /// Sets the content at the specified index to the provided decrypted content. This content will
     /// have its size and hash saved into the matching record. Optionally, a new Content ID or
     /// content type can be provided, with the existing values being preserved by default.
     pub fn set_content(&mut self, content: &[u8], index: usize, cid: Option<u32>, content_type: Option<tmd::ContentType>) -> Result<(), TitleError> {
-        self.content.set_content(content, index, cid, content_type, self.ticket.title_key_dec())?;
-        self.tmd.set_content_records(self.content.content_records());
+        let content_size = content.len() as u64;
+        let mut hasher = Sha1::new();
+        hasher.update(content);
+        let content_hash: [u8; 20] = hasher.finalize().into();
+        let content_enc = crypto::encrypt_content(
+            content,
+            self.ticket.title_key_dec(),
+            index as u16,
+            content_size
+        );
+        self.set_enc_content(&content_enc, index, content_size, content_hash, cid, content_type)?;
+        Ok(())
+    }
+
+    /// Removes the content at the specified index from the content list and content records. This
+    /// may leave a gap in the indexes recorded in the content records, but this should not cause
+    /// issues on the Wii or with correctly implemented WAD parsers.
+    pub fn remove_content(&mut self, index: usize) -> Result<(), TitleError> {
+        if self.content.get(index).is_none() || self.tmd.content_records().get(index).is_none() {
+            return Err(TitleError::IndexOutOfRange { index, max: self.tmd.content_records().len() - 1 });
+        }
+        self.content.remove(index);
+        let mut content_records = self.tmd.content_records().clone();
+        content_records.remove(index);
+        self.tmd.set_content_records(content_records);
+        Ok(())
+    }
+
+    /// Adds new encrypted content to the end of the content list and content records. The provided
+    /// Content ID, type, index, and decrypted hash will be added to the record.
+    pub fn add_enc_content(
+        &mut self, content:
+        &[u8], index: u16,
+        cid: u32,
+        content_type: tmd::ContentType,
+        content_size: u64,
+        content_hash: [u8; 20]
+    ) -> Result<(), TitleError> {
+        // Return an error if the specified index or CID already exist in the records.
+        if self.tmd.content_records().iter().any(|record| record.index == index) {
+            return Err(TitleError::IndexAlreadyExists(index));
+        }
+        if self.tmd.content_records().iter().any(|record| record.content_id == cid) {
+            return Err(TitleError::CIDAlreadyExists(cid));
+        }
+        self.content.push(content.to_vec());
+        let mut content_records = self.tmd.content_records().clone();
+        content_records.push(tmd::ContentRecord { content_id: cid, index, content_type, content_size, content_hash });
+        self.tmd.set_content_records(content_records);
         Ok(())
     }
 
@@ -147,8 +384,17 @@ impl Title {
     /// index will be automatically assigned based on the highest index currently recorded in the
     /// content records.
     pub fn add_content(&mut self, content: &[u8], cid: u32, content_type: tmd::ContentType) -> Result<(), TitleError> {
-        self.content.add_content(content, cid, content_type, self.ticket.title_key_dec())?;
-        self.tmd.set_content_records(self.content.content_records());
+        let max_index = self.tmd.content_records().iter()
+            .max_by_key(|record| record.index)
+            .map(|record| record.index)
+            .unwrap_or(0); // This should be impossible, but I guess 0 is a safe value just in case?
+        let new_index = max_index + 1;
+        let content_size = content.len() as u64;
+        let mut hasher = Sha1::new();
+        hasher.update(content);
+        let content_hash: [u8; 20] = hasher.finalize().into();
+        let content_enc = crypto::encrypt_content(content, self.ticket.title_key_dec(), new_index, content_size);
+        self.add_enc_content(&content_enc, new_index, cid, content_type, content_size, content_hash)?;
         Ok(())
     }
     
@@ -223,7 +469,7 @@ impl Title {
         self.tmd = tmd;
     }
     
-    pub fn set_content_region(&mut self, content: content::ContentRegion) {
+    pub fn set_contents(&mut self, content: Vec<Vec<u8>>) {
         self.content = content;
     }
     

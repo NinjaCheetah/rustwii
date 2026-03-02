@@ -7,7 +7,7 @@ use std::str;
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use thiserror::Error;
-use crate::title::{cert, tmd, ticket, content};
+use crate::title::{cert, tmd, ticket};
 use crate::title::ticket::TicketError;
 use crate::title::tmd::TMDError;
 
@@ -143,13 +143,13 @@ impl WADHeader {
 impl WADBody {
     /// Creates a new WADBody instance from instances of the components stored in a WAD file.
     pub fn from_parts(cert_chain: &cert::CertificateChain, crl: &[u8], ticket: &ticket::Ticket, tmd: &tmd::TMD, 
-                      content: &content::ContentRegion, meta: &[u8]) -> Result<WADBody, WADError> {
+                      content: &[u8], meta: &[u8]) -> Result<WADBody, WADError> {
         let body = WADBody {
             cert_chain: cert_chain.to_bytes().map_err(WADError::IO)?,
             crl: crl.to_vec(),
             ticket: ticket.to_bytes().map_err(WADError::IO)?,
             tmd: tmd.to_bytes().map_err(WADError::IO)?,
-            content: content.to_bytes().map_err(WADError::IO)?,
+            content: content.to_vec(),
             meta: meta.to_vec(),
         };
         Ok(body)
@@ -239,7 +239,7 @@ impl WAD {
     /// Creates a new WAD instance from instances of the components stored in a WAD file. This
     /// first creates a WADBody from the components, then generates a new WADHeader from them.
     pub fn from_parts(cert_chain: &cert::CertificateChain, crl: &[u8], ticket: &ticket::Ticket, tmd: &tmd::TMD,
-                      content: &content::ContentRegion, meta: &[u8]) -> Result<WAD, WADError> {
+                      content: &[u8], meta: &[u8]) -> Result<WAD, WADError> {
         let body = WADBody::from_parts(cert_chain, crl, ticket, tmd, content, meta)?;
         let header = WADHeader::from_body(&body)?;
         let wad = WAD {

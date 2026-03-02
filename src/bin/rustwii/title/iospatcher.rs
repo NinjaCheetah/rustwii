@@ -9,6 +9,7 @@ use anyhow::{bail, Context, Result};
 use clap::Args;
 use rustwii::title;
 use rustwii::title::iospatcher;
+use rustwii::title::tmd::ContentType;
 
 #[derive(Args)]
 #[clap(next_help_heading = "Patches")]
@@ -51,7 +52,7 @@ pub fn patch_ios(
     };
 
     let mut ios = title::Title::from_bytes(&fs::read(in_path)?).with_context(|| "The provided WAD file could not be parsed, and is likely invalid.")?;
-    let tid = hex::encode(ios.tmd.title_id());
+    let tid = hex::encode(ios.tmd().title_id());
 
     // If the TID is not a valid IOS TID, then bail.
     if !tid[..8].eq("00000001") || tid[8..].eq("00000001") || tid[8..].eq("00000002") {
@@ -102,6 +103,12 @@ pub fn patch_ios(
             println!("{} patch(es) applied", count);
             patches_applied += count;
         }
+
+        // Set the type of the content containing ES to "Normal" to avoid it getting installed to
+        // /shared1 on NAND.
+        if *no_shared {
+            set_type_normal(&mut ios, es_index)?;
+        }
     }
 
     if enabled_patches.drive_inquiry {
@@ -112,6 +119,10 @@ pub fn patch_ios(
         let count = iospatcher::ios_patch_drive_inquiry(&mut ios, dip_index)?;
         println!("{} patch(es) applied", count);
         patches_applied += count;
+
+        if *no_shared {
+            set_type_normal(&mut ios, dip_index)?;
+        }
     }
 
     println!("\nTotal patches applied: {patches_applied}");
@@ -125,5 +136,15 @@ pub fn patch_ios(
     fs::write(out_path, ios.to_wad()?.to_bytes()?)?;
 
     println!("IOS successfully patched!");
+    Ok(())
+}
+
+fn set_type_normal(ios: &mut title::Title, index: usize) -> Result<()> {
+    let mut content_records = ios.tmd().content_records().clone();
+    content_records[index].content_type = ContentType::Normal;
+    let mut tmd = ios.tmd().clone();
+    tmd.set_content_records(content_records);
+    ios.set_tmd(tmd);
+
     Ok(())
 }

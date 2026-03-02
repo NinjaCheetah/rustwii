@@ -106,7 +106,7 @@ pub fn tmd_remove(input: &str, output: &Option<String>, identifier: &ContentIden
     if let Some(index) = identifier.index {
         let mut content_records = tmd.content_records().clone();
         content_records.remove(index);
-        tmd.set_content_records(&content_records);
+        tmd.set_content_records(content_records);
         tmd.fakesign().with_context(|| "An unknown error occurred while fakesigning the modified TMD.")?;
         fs::write(&out_path, tmd.to_bytes()?).with_context(|| "Could not open output file for writing.")?;
         println!("Successfully removed content at index {} in TMD file \"{}\".", index, out_path.display());
@@ -121,7 +121,7 @@ pub fn tmd_remove(input: &str, output: &Option<String>, identifier: &ContentIden
         };
         let mut content_records = tmd.content_records().clone();
         content_records.remove(index as usize);
-        tmd.set_content_records(&content_records);
+        tmd.set_content_records(content_records);
         tmd.fakesign().with_context(|| "An unknown error occurred while fakesigning the modified TMD.")?;
         fs::write(&out_path, tmd.to_bytes()?).with_context(|| "Could not open output file for writing.")?;
         println!("Successfully removed content with Content ID \"{}\" ({}) in WAD file \"{}\".", identifier.cid.clone().unwrap(), cid, out_path.display());

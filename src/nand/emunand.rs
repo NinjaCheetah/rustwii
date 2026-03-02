@@ -8,9 +8,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use glob::glob;
 use thiserror::Error;
-use crate::nand::sys;
+use crate::nand::{sharedcontentmap, sys};
 use crate::title;
-use crate::title::{cert, content, ticket, tmd};
+use crate::title::{cert, ticket, tmd};
 
 #[derive(Debug, Error)]
 pub enum EmuNANDError {
@@ -28,8 +28,10 @@ pub enum EmuNANDError {
     TMD(#[from] tmd::TMDError),
     #[error("Ticket processing error")]
     Ticket(#[from] ticket::TicketError),
-    #[error("content processing error")]
-    Content(#[from] content::ContentError),
+    #[error("Title content processing error")]
+    TitleContent(#[from] title::TitleError),
+    #[error("content.map processing error")]
+    SharedContent(#[from] sharedcontentmap::SharedContentError),
     #[error("io error occurred during EmuNAND operation")]
     IO(#[from] std::io::Error),
 }
@@ -163,12 +165,12 @@ impl EmuNAND {
     /// actual meta/footer data contained in the title.
     pub fn install_title(&self, title: title::Title, override_meta: bool) -> Result<(), EmuNANDError> {
         // Save the two halves of the TID, since those are part of the installation path.
-        let tid_high = hex::encode(&title.tmd.title_id()[0..4]);
-        let tid_low = hex::encode(&title.tmd.title_id()[4..8]);
+        let tid_high = hex::encode(&title.tmd().title_id()[0..4]);
+        let tid_low = hex::encode(&title.tmd().title_id()[4..8]);
         // Tickets are installed to /ticket/<tid_high>/<tid_low>.tik.
         let ticket_dir = self.emunand_dirs["ticket"].join(&tid_high);
         safe_create_dir(&ticket_dir)?;
-        fs::write(ticket_dir.join(format!("{}.tik", &tid_low)), title.ticket.to_bytes()?)?;
+        fs::write(ticket_dir.join(format!("{}.tik", &tid_low)), title.ticket().to_bytes()?)?;
         // TMDs and normal content (non-shared) are installed to 
         // /title/<tid_high>/<tid_low>/content/, as title.tmd and <cid>.app.
         let mut title_dir = self.emunand_dirs["title"].join(&tid_high);
@@ -183,10 +185,10 @@ impl EmuNAND {
             fs::remove_dir_all(&title_dir)?;
         }
         fs::create_dir(&title_dir)?;
-        fs::write(title_dir.join("title.tmd"), title.tmd.to_bytes()?)?;
-        for i in 0..title.content.content_records().len() {
-            if matches!(title.content.content_records()[i].content_type, tmd::ContentType::Normal) {
-                let content_path = title_dir.join(format!("{:08X}.app", title.content.content_records()[i].content_id).to_ascii_lowercase());
+        fs::write(title_dir.join("title.tmd"), title.tmd().to_bytes()?)?;
+        for i in 0..title.tmd().content_records().len() {
+            if matches!(title.tmd().content_records()[i].content_type, tmd::ContentType::Normal) {
+                let content_path = title_dir.join(format!("{:08X}.app", title.tmd().content_records()[i].content_id).to_ascii_lowercase());
                 fs::write(content_path, title.get_content_by_index(i)?)?;
             }
         }
@@ -196,13 +198,13 @@ impl EmuNAND {
         // content is already installed.
         let content_map_path = self.emunand_dirs["shared1"].join("content.map");
         let mut content_map = if content_map_path.exists() {
-            content::SharedContentMap::from_bytes(&fs::read(&content_map_path)?)?
+            sharedcontentmap::SharedContentMap::from_bytes(&fs::read(&content_map_path)?)?
         } else {
-            content::SharedContentMap::new()
+            sharedcontentmap::SharedContentMap::new()
         };
-        for i in 0..title.content.content_records().len() {
-            if matches!(title.content.content_records()[i].content_type, tmd::ContentType::Shared) {
-                if let Some(file_name) = content_map.add(&title.content.content_records()[i].content_hash)? {
+        for i in 0..title.tmd().content_records().len() {
+            if matches!(title.tmd().content_records()[i].content_type, tmd::ContentType::Shared) {
+                if let Some(file_name) = content_map.add(&title.tmd().content_records()[i].content_hash)? {
                     let content_path = self.emunand_dirs["shared1"].join(format!("{}.app", file_name.to_ascii_lowercase()));
                     fs::write(content_path, title.get_content_by_index(i)?)?;
                 }
@@ -232,7 +234,7 @@ impl EmuNAND {
         } else {
             sys::UidSys::new()
         };
-        uid_sys.add(&title.tmd.title_id())?;
+        uid_sys.add(&title.tmd().title_id())?;
         fs::write(&uid_sys_path, &uid_sys.to_bytes()?)?;
         Ok(())
     }

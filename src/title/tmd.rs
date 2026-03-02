@@ -24,6 +24,8 @@ pub enum TMDError {
     InvalidContentType(u16),
     #[error("encountered unknown title type `{0}`")]
     InvalidTitleType(String),
+    #[error("content with requested Content ID {0} could not be found")]
+    CIDNotFound(u32),
     #[error("TMD data is not in a valid format")]
     IO(#[from] std::io::Error),
 }
@@ -90,7 +92,7 @@ pub struct ContentRecord {
 }
 
 /// A structure that represents a Wii TMD (Title Metadata) file.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TMD {
     signature_type: u32,
     signature: [u8; 256],
@@ -322,8 +324,8 @@ impl TMD {
     }
 
     /// Sets the content records in the TMD.
-    pub fn set_content_records(&mut self, content_records: &[ContentRecord]) {
-        self.content_records = content_records.to_vec();
+    pub fn set_content_records(&mut self, content_records: Vec<ContentRecord>) {
+        self.content_records = content_records;
     }
 
     /// Gets whether a TMD is fakesigned using the strncmp (trucha) bug or not.
@@ -475,5 +477,19 @@ impl TMD {
         }
         self.ios_tid = ios_tid;
         Ok(())
+    }
+
+    /// Gets the index of content using its Content ID.
+    pub fn get_index_from_cid(&self, cid: u32) -> Result<usize, TMDError> {
+        // Use fancy Rust find and map methods to find the index matching the provided CID. Take
+        // that libWiiPy!
+        let content_index = self.content_records().iter()
+            .find(|record| record.content_id == cid)
+            .map(|record| record.index);
+        if let Some(index) = content_index {
+            Ok(index as usize)
+        } else {
+            Err(TMDError::CIDNotFound(cid))
+        }
     }
 }

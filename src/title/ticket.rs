@@ -30,7 +30,7 @@ pub struct TitleLimit {
     pub limit_max: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A structure that represents a Wii Ticket file.
 pub struct Ticket {
     signature_type: u32,

@@ -290,7 +290,7 @@ pub fn install_missing(emunand: &str, vwii: &bool) -> Result<()> {
     for ios in missing_tids {
         println!("Downloading IOS{} ({})...", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase());
         let title = nus::download_title(ios, None, true)?;
-        let version = title.tmd.title_version();
+        let version = title.tmd().title_version();
         println!("  Installing IOS{} ({}) v{}...", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase(), version);
         emunand.install_title(title, false)?;
         println!("  Installed IOS{} ({}) v{}!", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase(), version);
@@ -325,7 +325,7 @@ pub fn uninstall_title(tid: &str, emunand: &str, remove_ticket: &bool) -> Result
     let tid_bin: [u8; 8] = if tid_as_path.exists() {
         let wad_file = fs::read(tid_as_path).with_context(|| format!("Failed to open WAD file \"{}\" for reading.", tid_as_path.display()))?;
         let title = title::Title::from_bytes(&wad_file).with_context(|| format!("The provided WAD file \"{}\" appears to be invalid.", tid_as_path.display()))?;
-        title.tmd.title_id()
+        title.tmd().title_id()
     } else {
         hex::decode(tid).with_context(|| "The specified Title ID is not valid! The Title ID must be in hex format.")?.try_into().unwrap()
     };

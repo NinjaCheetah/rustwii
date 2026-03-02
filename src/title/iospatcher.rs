@@ -6,7 +6,6 @@
 use std::io::{Cursor, Seek, SeekFrom, Write};
 use thiserror::Error;
 use crate::title;
-use crate::title::content;
 
 #[derive(Debug, Error)]
 pub enum IOSPatcherError {
@@ -14,8 +13,6 @@ pub enum IOSPatcherError {
     NotIOS,
     #[error("the required module \"{0}\" could not be found, this may not be a valid IOS")]
     ModuleNotFound(String),
-    #[error("failed to get IOS content")]
-    Content(#[from] content::ContentError),
     #[error("failed to set content in Title")]
     Title(#[from] title::TitleError),
     #[error("IOS content is invalid")]

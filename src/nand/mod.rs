@@ -6,3 +6,4 @@
 pub mod emunand;
 pub mod setting;
 pub mod sys;
+pub mod sharedcontentmap;

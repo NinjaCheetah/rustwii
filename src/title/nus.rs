@@ -7,7 +7,7 @@ use std::str;
 use std::io::Write;
 use reqwest;
 use thiserror::Error;
-use crate::title::{cert, tmd, ticket, content};
+use crate::title::{cert, tmd, ticket};
 use crate::title;
 
 const WII_NUS_ENDPOINT: &str = "http://nus.cdn.shop.wii.com/ccs/download/";
@@ -25,8 +25,6 @@ pub enum NUSError {
     TMD(#[from] tmd::TMDError),
     #[error("Ticket processing error")]
     Ticket(#[from] ticket::TicketError),
-    #[error("Content processing error")]
-    Content(#[from] content::ContentError),
     #[error("an error occurred while assembling a Title from the downloaded data")]
     Title(#[from] title::TitleError),
     #[error("data could not be downloaded from the NUS")]
@@ -112,8 +110,8 @@ pub fn download_title(title_id: [u8; 8], title_version: Option<u16>, wiiu_endpoi
     let cert_chain = cert::CertificateChain::from_bytes(&download_cert_chain(wiiu_endpoint)?)?;
     let tmd = tmd::TMD::from_bytes(&download_tmd(title_id, title_version, wiiu_endpoint)?)?;
     let tik = ticket::Ticket::from_bytes(&download_ticket(title_id, wiiu_endpoint)?)?;
-    let content_region = content::ContentRegion::from_contents(download_contents(&tmd, wiiu_endpoint)?, tmd.content_records().clone())?;
-    let title = title::Title::from_parts(cert_chain, None, tik, tmd, content_region, None)?;
+    let contents = download_contents(&tmd, wiiu_endpoint)?;
+    let title = title::Title::from_parts_with_content(cert_chain, None, tik, tmd, contents, None)?;
     Ok(title)
 }
 
