@@ -6,4 +6,4 @@ pub mod nus;
 pub mod wad;
 pub mod tmd;
 mod shared;
-pub mod iospatcher;
+pub mod ios;

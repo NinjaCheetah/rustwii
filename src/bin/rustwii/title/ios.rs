@@ -1,15 +1,61 @@
-// title/iospatcher.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
+// title/ios.rs from ruswtii (c) 2025 NinjaCheetah & Contributors
 // https://github.com/NinjaCheetah/rustwii
 //
-// Code for the iospatcher command in the rustwii CLI.
+// Code for the IOS patcher and cIOS build commands in the rustwii CLI.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
-use clap::Args;
+use clap::{Args, Subcommand};
 use rustwii::title;
 use rustwii::title::iospatcher;
 use rustwii::title::tmd::ContentType;
+
+#[derive(Subcommand)]
+#[command(arg_required_else_help = true)]
+pub enum Commands {
+    /// Build a cIOS from a provided base IOS and map
+    Cios {
+        /// The base IOS WAD
+        base: String,
+        /// The cIOS map file
+        map: String,
+        /// Path for the finished cIOS WAD
+        output: String,
+        /// The cIOS version from the map to build
+        #[arg(short, long)]
+        cios_version: Option<u16>,
+        /// Path to the directory containing the cIOS modules (optional, defaults to the current
+        /// directory)
+        #[arg(short, long)]
+        modules: Option<String>,
+        /// Slot that the cIOS will install to (optional, defaults to 249)
+        #[arg(short, long)]
+        slot: Option<u8>,
+        /// IOS version the cIOS will have (optional, defaults to 65535)
+        #[arg(short, long)]
+        version: Option<u16>
+    },
+    /// Apply patches to an IOS
+    Patch {
+        /// The IOS WAD to apply patches to
+        input: String,
+        /// An optional output path; default to overwriting input file if not provided
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Set a new IOS version (0-65535)
+        #[arg(short, long)]
+        version: Option<u16>,
+        /// Set the slot that this IOS will install into
+        #[arg(short, long)]
+        slot: Option<u8>,
+        /// Set all patched content to be non-shared
+        #[arg(short, long, action)]
+        no_shared: bool,
+        #[command(flatten)]
+        enabled_patches: EnabledPatches,
+    }
+}
 
 #[derive(Args)]
 #[clap(next_help_heading = "Patches")]
@@ -145,6 +191,20 @@ fn set_type_normal(ios: &mut title::Title, index: usize) -> Result<()> {
     let mut tmd = ios.tmd().clone();
     tmd.set_content_records(content_records);
     ios.set_tmd(tmd);
+
+    Ok(())
+}
+
+pub fn build_cios(
+    base: &str,
+    map: &str,
+    output: &str,
+    cios_version: &Option<u16>,
+    modules: &Option<String>,
+    slot: &Option<u8>,
+    version: &Option<u16>
+) -> Result<()> {
+    todo!();
 
     Ok(())
 }
