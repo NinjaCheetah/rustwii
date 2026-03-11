@@ -51,7 +51,8 @@ pub struct Ticket {
     permit_mask: [u8; 4],
     title_export_allowed: u8,
     common_key_index: u8,
-    unknown3: [u8; 48],
+    unknown3: [u8; 3], // Separated out to use for fakesigning, since WiiBrew has these 3 bytes listed separately.
+    unknown4: [u8; 45],
     content_access_permission: [u8; 64],
     padding2: [u8; 2],
     title_limits: [TitleLimit; 8],
@@ -97,8 +98,10 @@ impl Ticket {
         buf.read_exact(&mut permit_mask).map_err(TicketError::IO)?;
         let title_export_allowed = buf.read_u8().map_err(TicketError::IO)?;
         let common_key_index = buf.read_u8().map_err(TicketError::IO)?;
-        let mut unknown3 = [0u8; 48];
+        let mut unknown3 = [0u8; 3];
         buf.read_exact(&mut unknown3).map_err(TicketError::IO)?;
+        let mut unknown4 = [0u8; 45];
+        buf.read_exact(&mut unknown4).map_err(TicketError::IO)?;
         let mut content_access_permission = [0u8; 64];
         buf.read_exact(&mut content_access_permission).map_err(TicketError::IO)?;
         let mut padding2 = [0u8; 2];
@@ -131,6 +134,7 @@ impl Ticket {
             title_export_allowed,
             common_key_index,
             unknown3,
+            unknown4,
             content_access_permission,
             padding2,
             title_limits,
@@ -159,6 +163,7 @@ impl Ticket {
         buf.write_u8(self.title_export_allowed)?;
         buf.write_u8(self.common_key_index)?;
         buf.write_all(&self.unknown3)?;
+        buf.write_all(&self.unknown4)?;
         buf.write_all(&self.content_access_permission)?;
         buf.write_all(&self.padding2)?;
         // Iterate over title limits and write out their data.
@@ -295,7 +300,8 @@ impl Ticket {
         while test_hash[0] != 0 {
             if current_int == 65535 { return Err(TicketError::CannotFakesign); }
             current_int += 1;
-            self.unknown2 = current_int.to_be_bytes();
+            let bytes: [u8; 2] = current_int.to_be_bytes();
+            self.unknown3 = [bytes[0], bytes[1], 0];
             let mut hasher = Sha1::new();
             let ticket_body = self.to_bytes()?;
             hasher.update(&ticket_body[320..]);
