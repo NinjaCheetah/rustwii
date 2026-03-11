@@ -128,13 +128,13 @@ fn main() -> Result<()> {
                 title::ios::Commands::Cios {
                     base,
                     map,
-                    output,
                     cios_version,
+                    output,
                     modules,
                     slot,
                     version
                 } => {
-                    title::ios::build_cios(base, map, output, cios_version, modules, slot, version)?
+                    title::ios::build_cios(base, map, cios_version, output, modules, slot, version)?
                 },
                 title::ios::Commands::Patch {
                     input,

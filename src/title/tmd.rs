@@ -55,7 +55,7 @@ impl fmt::Display for TitleType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ContentType {
     Normal = 1,
     Development = 2,
