@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
 use regex::RegexBuilder;
-use rustwii::nand::setting;
 use rustwii::nand::setting::SettingTxt;
 
 #[derive(Subcommand)]
@@ -49,7 +48,7 @@ pub fn decrypt_setting(input: &str, output: &Option<String>) -> Result<()> {
     } else {
         PathBuf::from("setting_dec.txt")
     };
-    let setting = setting::SettingTxt::from_bytes(&fs::read(in_path)?).with_context(|| "The provided setting.txt could not be parsed, and is likely invalid.")?;
+    let setting = SettingTxt::from_bytes(&fs::read(in_path)?).with_context(|| "The provided setting.txt could not be parsed, and is likely invalid.")?;
     fs::write(out_path, setting.to_string()?)?;
 
     println!("Successfully decrypted setting.txt!");
@@ -67,7 +66,7 @@ pub fn encrypt_setting(input: &str, output: &Option<String>) -> Result<()> {
     } else {
         PathBuf::from("setting_enc.txt")
     };
-    let setting = setting::SettingTxt::from_string(String::from_utf8(fs::read(in_path)?).with_context(|| "Invalid characters found in input file!")?)?;
+    let setting = SettingTxt::from_string(String::from_utf8(fs::read(in_path)?).with_context(|| "Invalid characters found in input file!")?)?;
     fs::write(out_path, setting.to_bytes()?)?;
 
     println!("Successfully encrypted setting.txt!");

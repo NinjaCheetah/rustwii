@@ -173,7 +173,7 @@ pub fn wad_add(input: &str, content: &str, output: &Option<String>, cid: &Option
         println!("Generated new random Content ID \"{:08X}\" ({}) because no Content ID was specified.", cid, cid);
         cid
     };
-    title.add_content(&new_content, target_cid, target_type.clone()).with_context(|| "An unknown error occurred while setting the new content.")?;
+    title.add_content(&new_content, target_cid, target_type).with_context(|| "An unknown error occurred while setting the new content.")?;
     title.fakesign().with_context(|| "An unknown error occurred while fakesigning the modified WAD.")?;
     fs::write(&out_path, title.to_wad()?.to_bytes()?).with_context(|| "Could not open output file for writing.")?;
     println!("Successfully added new content with Content ID \"{:08X}\" ({}) and type \"{}\" to WAD file \"{}\"!", target_cid, target_cid, target_type, out_path.display());

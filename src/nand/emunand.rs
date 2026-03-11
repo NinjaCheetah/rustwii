@@ -203,11 +203,11 @@ impl EmuNAND {
             sharedcontentmap::SharedContentMap::new()
         };
         for i in 0..title.tmd().content_records().len() {
-            if matches!(title.tmd().content_records()[i].content_type, tmd::ContentType::Shared) {
-                if let Some(file_name) = content_map.add(&title.tmd().content_records()[i].content_hash)? {
+            if matches!(title.tmd().content_records()[i].content_type, tmd::ContentType::Shared) &&
+                let Some(file_name) = content_map.add(&title.tmd().content_records()[i].content_hash)?
+            {
                     let content_path = self.emunand_dirs["shared1"].join(format!("{}.app", file_name.to_ascii_lowercase()));
                     fs::write(content_path, title.get_content_by_index(i)?)?;
-                }
             }
         }
         fs::write(&content_map_path, content_map.to_bytes()?)?;

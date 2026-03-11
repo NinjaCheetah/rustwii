@@ -351,6 +351,9 @@ impl TMD {
         self.signature = [0; 256];
         let mut current_int: u16 = 0;
         let mut test_hash: [u8; 20] = [255; 20];
+        
+        // We're using the unused "minor version" field of the TMD as a 16-bit integer and
+        // incrementing it to brute force the hash that we need.
         while test_hash[0] != 0 {
             if current_int == 65535 { return Err(TMDError::CannotFakesign); }
             current_int += 1;
