@@ -225,8 +225,8 @@ fn main() -> Result<()> {
                 title::wad::Commands::Edit { input, output, edits } => {
                     title::wad::wad_edit(input, output, edits)?
                 },
-                title::wad::Commands::Pack { input, output} => {
-                    title::wad::wad_pack(input, output)?
+                title::wad::Commands::Pack { input, output, fakesign } => {
+                    title::wad::wad_pack(input, output, fakesign)?
                 },
                 title::wad::Commands::Remove { input, output, identifier } => {
                     title::wad::wad_remove(input, output, identifier)?

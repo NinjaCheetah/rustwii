@@ -59,7 +59,10 @@ pub enum Commands {
         /// The directory to pack into a WAD
         input: String,
         /// The name of the packed WAD file
-        output: String
+        output: String,
+        /// Fakesign the TMD and Ticket while packing
+        #[arg(short, long)]
+        fakesign: bool
     },
     /// Remove content from a WAD file
     Remove {
@@ -310,7 +313,7 @@ pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications
     Ok(())
 }
 
-pub fn wad_pack(input: &str, output: &str) -> Result<()> {
+pub fn wad_pack(input: &str, output: &str, fakesign: &bool) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source directory \"{}\" does not exist.", in_path.display());
@@ -370,8 +373,14 @@ pub fn wad_pack(input: &str, output: &str) -> Result<()> {
         title.set_content(&data, index as usize, None, None)
             .with_context(|| "Failed to load content into the ContentRegion.")?;
     }
-    let wad = title.to_wad()?;
+
+    // If --fakesign was passed, fakesign the title.
+    if *fakesign {
+        title.fakesign()?;
+    }
+
     // Write out WAD file.
+    let wad = title.to_wad()?;
     let mut out_path = PathBuf::from(output);
     match out_path.extension() {
         Some(ext) => { 
