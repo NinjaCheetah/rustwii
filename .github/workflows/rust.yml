@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     # Not sure if this is the best choice, but I'm building in release mode to produce more effective nightly binaries.
     - name: Update Toolchain
       run: rustup update
@@ -27,7 +27,7 @@ jobs:
         cd ~
         tar cvf rustwii.tar rustwii
     - name: Upload rustwii
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         path: ~/rustwii.tar
         name: rustwii-Linux-bin
@@ -37,7 +37,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Update Toolchain
       run: rustup update
     - name: Add ARM64 Target
@@ -50,7 +50,7 @@ jobs:
         cd ~
         tar cvf rustwii.tar rustwii
     - name: Upload rustwii
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         path: ~/rustwii.tar
         name: rustwii-macOS-arm64-bin
@@ -60,7 +60,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Update Toolchain
       run: rustup update
     - name: Add x86_64 Target
@@ -73,7 +73,7 @@ jobs:
         cd ~
         tar cvf rustwii.tar rustwii
     - name: Upload rustwii
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         path: ~/rustwii.tar
         name: rustwii-macOS-x86_64-bin
@@ -83,13 +83,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Update Toolchain
       run: rustup update
     - name: Build rustwii
       run: cargo build --verbose --release
     - name: Upload rustwii
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         path: D:\a\rustwii\rustwii\target\release\rustwii.exe
         name: rustwii-Windows-bin
