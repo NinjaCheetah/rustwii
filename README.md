@@ -1,4 +1,4 @@
-![rustwii-banner](https://github.com/user-attachments/assets/08a7eea1-837e-4bce-939e-13c720b35226)
+![rustwii banner](https://github.com/user-attachments/assets/5ba70c68-2482-4532-a687-ca702aadf2b9)
 # rustwii
 
 *Like rusty but it's rustwii because the Wii? Get it?*
