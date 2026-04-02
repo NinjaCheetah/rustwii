@@ -8,6 +8,7 @@ use std::path::Path;
 use anyhow::{bail, Context, Result};
 use rustwii::archive::u8;
 use rustwii::{title, title::cert, title::tmd, title::ticket, title::wad, title::versions};
+use rustwii::media::banner;
 use crate::filetypes::{WiiFileType, identify_file_type};
 
 // Avoids duplicated code, since both TMD and Ticket info print the TID in the same way.
@@ -188,12 +189,20 @@ fn print_ticket_info(ticket: &ticket::Ticket, cert: Option<cert::Certificate>) -
 
 fn print_wad_info(wad: wad::WAD) -> Result<()> {
     println!("WAD Info");
+    // Create a Title so we can access all the fields we need.
+    let title = title::Title::from_wad(&wad).with_context(|| "The provided WAD file could not be parsed, and is likely invalid.")?;
+
+    if let Ok(banner_raw) = title.get_content_by_index(0) &&
+        let Ok(banner) = banner::Banner::from_bytes(&banner_raw)
+    {
+        let channel_name = banner.imet_header().channel_name(banner::TitleLanguage::English);
+        println!("  Channel Name: {}", channel_name);
+    }
+
     match wad.wad_type() {
         wad::WADType::ImportBoot => { println!("  WAD Type: boot2") },
         wad::WADType::Installable => { println!("  WAD Type: Standard Installable") },
     }
-    // Create a Title for size info, signing info and TMD/Ticket info.
-    let title = title::Title::from_wad(&wad).with_context(|| "The provided WAD file could not be parsed, and is likely invalid.")?;
     let min_size_blocks = title::bytes_to_blocks(title.title_size(None)?);
     let max_size_blocks = title::bytes_to_blocks(title.title_size(Some(true))?);
     if min_size_blocks == max_size_blocks {
