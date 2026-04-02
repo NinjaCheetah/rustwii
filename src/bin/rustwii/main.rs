@@ -222,8 +222,8 @@ fn main() -> Result<()> {
                 title::wad::Commands::Convert { input, target, output } => {
                     title::wad::wad_convert(input, target, output)?
                 },
-                title::wad::Commands::Edit { input, output, edits } => {
-                    title::wad::wad_edit(input, output, edits)?
+                title::wad::Commands::Edit { input, output, edits, channel_name } => {
+                    title::wad::wad_edit(input, output, edits, channel_name)?
                 },
                 title::wad::Commands::Pack { input, output, fakesign } => {
                     title::wad::wad_pack(input, output, fakesign)?

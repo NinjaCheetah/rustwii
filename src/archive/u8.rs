@@ -68,7 +68,6 @@ impl U8Reader {
                 if &magic != b"\x55\xAA\x38\x2D" {
                     return Err(U8Error::NotU8Data);
                 }
-                println!("ignoring IMET header at 0x40");
             }
             // Check for an IMET header that comes after a build tag.
             else {
@@ -81,7 +80,6 @@ impl U8Reader {
                     if &magic != b"\x55\xAA\x38\x2D" {
                         return Err(U8Error::NotU8Data);
                     }
-                    println!("ignoring IMET header at 0x80");
                 }
             }
         }
@@ -231,10 +229,12 @@ impl U8Directory {
             u8_nodes.push(U8Node { node_type: 0, name_offset: 0, data_offset: 0, size: file_data[u8_nodes.len()].len() as u32});
         }
 
-        // For directories, add their name to the file name list, add empty data to the file data
-        // list, find the total number of files and directories inside the directory to calculate
-        // the final node included in it, then recursively call this function again on that
-        // directory to process it.
+        // For directories, do the following:
+        // 1. Add their name to the file name list
+        // 2. Add empty data to the file data list
+        // 3. Find the total number of files and directories inside the directory to calculate
+        // the final node included in it
+        // 4. Recursively call this function again on that directory to process it
         for dir in &self.dirs {
             file_names.push(dir.name.clone());
             file_data.push(Vec::new());

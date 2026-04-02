@@ -10,6 +10,8 @@ use clap::{Subcommand, Args};
 use glob::glob;
 use hex::FromHex;
 use rand::prelude::*;
+use strum::IntoEnumIterator;
+use rustwii::media::banner;
 use rustwii::title::{cert, crypto, tmd, ticket};
 use rustwii::title;
 use crate::title::shared::{validate_target_ios, validate_target_tid, validate_target_type, ContentIdentifier, TitleModifications};
@@ -52,7 +54,10 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<String>,
         #[command(flatten)]
-        edits: TitleModifications
+        edits: TitleModifications,
+        /// A new channel name for this WAD, if it contains a channel
+        #[arg(long)]
+        channel_name: Option<String>
     },
     /// Pack a directory into a WAD file
     Pack {
@@ -259,7 +264,7 @@ pub fn wad_convert(input: &str, target: &ConvertTargets, output: &Option<String>
     Ok(())
 }
 
-pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications) -> Result<()> {
+pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications, channel_name: &Option<String>) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source WAD \"{}\" does not exist.", in_path.display());
@@ -302,6 +307,22 @@ pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications
         let mut tmd = title.tmd().clone();
         tmd.set_ios_tid(new_ios_tid)?;
         title.set_tmd(tmd);
+    }
+
+    if let Some(channel_name) = channel_name {
+        let banner_raw = title.get_content_by_index(0)?;
+        if let Ok(banner) = banner::Banner::from_bytes(&banner_raw) {
+            let mut imet_header = banner.imet_header().clone();
+            for lang in banner::TitleLanguage::iter() {
+                imet_header.set_channel_name(lang, channel_name.clone())?;
+            }
+            let mut banner = banner.clone();
+            banner.set_imet_header(imet_header);
+            title.set_content(&banner.to_bytes()?, 0, None, None)?;
+            changes_summary.push(format!("Set channel name to \"{}\"", channel_name));
+        } else {
+            bail!("This WAD does not contain a channel, so a new channel name cannot be set!")
+        }
     }
 
     title.fakesign()?;
