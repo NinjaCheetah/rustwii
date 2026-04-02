@@ -192,6 +192,8 @@ fn print_wad_info(wad: wad::WAD) -> Result<()> {
     // Create a Title so we can access all the fields we need.
     let title = title::Title::from_wad(&wad).with_context(|| "The provided WAD file could not be parsed, and is likely invalid.")?;
 
+    // Decrypt the first content, which contains the banner for channel WADs, and parse that
+    // banner if possible to display the channel's name in the output.
     if let Ok(banner_raw) = title.get_content_by_index(0) &&
         let Ok(banner) = banner::Banner::from_bytes(&banner_raw)
     {

@@ -6,6 +6,7 @@
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use md5;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use strum_macros::EnumIter;
 use thiserror::Error;
 use crate::archive::u8;
 
@@ -27,10 +28,9 @@ pub struct IMETHeader {
     sizes: [u32; 3],
     flag1: u32,
     channel_names: Vec<String>,
-    md5_hash: [u8; 16],
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, EnumIter)]
 pub enum TitleLanguage {
     Japanese = 0,
     English = 1,
@@ -81,8 +81,7 @@ impl IMETHeader {
             version,
             sizes,
             flag1,
-            channel_names,
-            md5_hash
+            channel_names
         })
     }
 
@@ -106,8 +105,6 @@ impl IMETHeader {
         buf.resize(buf.len() + 16, 0);
         let md5_hash = md5::compute(&buf);
         buf.truncate(buf.len() - 16);
-        println!("orig: {}", hex::encode(self.md5_hash));
-        println!("new: {:?}", md5_hash);
         buf.write_all(md5_hash.as_slice())?;
 
         Ok(buf)
@@ -120,8 +117,7 @@ impl IMETHeader {
             version: 3, // this value is always 3 apparently so use that as the default
             flag1: 0, // nobody seems to even know what this does
             channel_names: vec![],
-            sizes,
-            md5_hash: [0u8; 16]
+            sizes
         })
     }
 
