@@ -60,5 +60,6 @@ fn main() {
     let file = fs::read("banner.arc").unwrap();
     let imet_header = IMETHeader::from_bytes(&file[0x40..0x640]).unwrap();
     println!("{:?}", imet_header);
-    println!("{}", imet_header.get_channel_name(TitleLanguage::German));
+    println!("{}", imet_header.channel_name(TitleLanguage::German));
+    fs::write("banner2.arc", imet_header.to_bytes().unwrap()).unwrap();
 }
