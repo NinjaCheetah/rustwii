@@ -163,7 +163,7 @@ impl EmuNAND {
     /// Install the provided title to an EmuNAND, mimicking a WAD installation performed by ES. The 
     /// "override meta" option will install the content at index 0 as title.met, instead of any 
     /// actual meta/footer data contained in the title.
-    pub fn install_title(&self, title: title::Title, override_meta: bool) -> Result<(), EmuNANDError> {
+    pub fn install_title(&self, title: title::Title, override_meta: bool, unchecked: bool) -> Result<(), EmuNANDError> {
         // Save the two halves of the TID, since those are part of the installation path.
         let tid_high = hex::encode(&title.tmd().title_id()[0..4]);
         let tid_low = hex::encode(&title.tmd().title_id()[4..8]);
@@ -189,7 +189,11 @@ impl EmuNAND {
         for i in 0..title.tmd().content_records().len() {
             if matches!(title.tmd().content_records()[i].content_type, tmd::ContentType::Normal) {
                 let content_path = title_dir.join(format!("{:08X}.app", title.tmd().content_records()[i].content_id).to_ascii_lowercase());
-                fs::write(content_path, title.get_content_by_index(i)?)?;
+                if unchecked {
+                    fs::write(content_path, title.get_content_by_index_unchecked(i)?)?;
+                } else {
+                    fs::write(content_path, title.get_content_by_index(i)?)?;
+                }
             }
         }
         // Shared content needs to be installed to /shared1/, with incremental names decided by
@@ -206,8 +210,12 @@ impl EmuNAND {
             if matches!(title.tmd().content_records()[i].content_type, tmd::ContentType::Shared) &&
                 let Some(file_name) = content_map.add(&title.tmd().content_records()[i].content_hash)?
             {
-                    let content_path = self.emunand_dirs["shared1"].join(format!("{}.app", file_name.to_ascii_lowercase()));
+                let content_path = self.emunand_dirs["shared1"].join(format!("{}.app", file_name.to_ascii_lowercase()));
+                if unchecked {
+                    fs::write(content_path, title.get_content_by_index_unchecked(i)?)?;
+                } else {
                     fs::write(content_path, title.get_content_by_index(i)?)?;
+                }
             }
         }
         fs::write(&content_map_path, content_map.to_bytes()?)?;
@@ -215,7 +223,11 @@ impl EmuNAND {
         // The "override meta" option installs the content at index 0 to title.met instead, as that
         // content contains the banner, and that's what title.met is meant to hold.
         let meta_data = if override_meta {
-            title.get_content_by_index(0)?
+            if unchecked {
+                title.get_content_by_index_unchecked(0)?
+            } else {
+                title.get_content_by_index(0)?
+            }
         } else {
             title.meta()
         };

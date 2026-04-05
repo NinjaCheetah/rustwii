@@ -217,10 +217,8 @@ impl Title {
 
     /// Gets the decrypted content file from the Title at the specified index.
     pub fn get_content_by_index(&self, index: usize) -> Result<Vec<u8>, TitleError> {
-        let content = self.get_enc_content_by_index(index)?;
+        let content_dec = self.get_content_by_index_unchecked(index)?;
         // Verify the hash of the decrypted content against its record.
-        let mut content_dec = crypto::decrypt_content(&content, self.ticket.title_key_dec(), self.tmd.content_records()[index].index);
-        content_dec.resize(self.tmd.content_records()[index].content_size as usize, 0);
         let mut hasher = Sha1::new();
         hasher.update(content_dec.clone());
         let result = hasher.finalize();
@@ -229,6 +227,15 @@ impl Title {
                 hash: hex::encode(result), expected: hex::encode(self.tmd.content_records()[index].content_hash)
             });
         }
+        Ok(content_dec)
+    }
+
+    /// Gets the decrypted content file from the Title at the specified index without checking
+    /// if it matches the hash in the Title's content records.
+    pub fn get_content_by_index_unchecked(&self, index: usize) -> Result<Vec<u8>, TitleError> {
+        let content = self.get_enc_content_by_index(index)?;
+        let mut content_dec = crypto::decrypt_content(&content, self.ticket.title_key_dec(), self.tmd.content_records()[index].index);
+        content_dec.resize(self.tmd.content_records()[index].content_size as usize, 0);
         Ok(content_dec)
     }
 

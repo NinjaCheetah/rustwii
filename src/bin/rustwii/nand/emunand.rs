@@ -37,6 +37,9 @@ pub enum Commands {
         /// included in the WAD
         #[clap(long)]
         override_meta: bool,
+        /// Skip validating the hashes of the decrypted content during installation
+        #[arg(long)]
+        skip_hash: bool
     },
     /// Uninstall a title from an EmuNAND
     UninstallTitle {
@@ -292,14 +295,14 @@ pub fn install_missing(emunand: &str, vwii: &bool) -> Result<()> {
         let title = nus::download_title(ios, None, true)?;
         let version = title.tmd().title_version();
         println!("  Installing IOS{} ({}) v{}...", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase(), version);
-        emunand.install_title(title, false)?;
+        emunand.install_title(title, false, false)?;
         println!("  Installed IOS{} ({}) v{}!", u32::from_str_radix(&hex::encode(&ios[4..8]), 16)?, hex::encode(ios).to_ascii_uppercase(), version);
     }
     println!("\nAll missing IOSes have been installed!");
     Ok(())
 }
 
-pub fn install_title(wad: &str, emunand: &str, override_meta: &bool) -> Result<()> {
+pub fn install_title(wad: &str, emunand: &str, override_meta: &bool, skip_hash: &bool) -> Result<()> {
     let wad_path = Path::new(wad);
     if !wad_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", wad_path.display());
@@ -311,7 +314,7 @@ pub fn install_title(wad: &str, emunand: &str, override_meta: &bool) -> Result<(
     let wad_file = fs::read(wad_path).with_context(|| format!("Failed to open WAD file \"{}\" for reading.", wad_path.display()))?;
     let title = title::Title::from_bytes(&wad_file).with_context(|| format!("The provided WAD file \"{}\" appears to be invalid.", wad_path.display()))?;
     let emunand = emunand::EmuNAND::open(emunand_path.to_path_buf())?;
-    emunand.install_title(title, *override_meta)?;
+    emunand.install_title(title, *override_meta, *skip_hash)?;
     println!("Successfully installed WAD \"{}\" to EmuNAND at \"{}\"!", wad_path.display(), emunand_path.display());
     Ok(())
 }

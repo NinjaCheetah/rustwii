@@ -99,7 +99,10 @@ pub enum Commands {
         /// The path to the WAD to unpack
         input: String,
         /// The directory to extract the WAD to
-        output: String
+        output: String,
+        /// Skip validating the hashes of the decrypted content
+        #[arg(long)]
+        skip_hash: bool
     },
 }
 
@@ -504,7 +507,7 @@ pub fn wad_set(input: &str, content: &str, output: &Option<String>, identifier: 
     Ok(())
 }
 
-pub fn wad_unpack(input: &str, output: &str) -> Result<()> {
+pub fn wad_unpack(input: &str, output: &str, skip_hash: &bool) -> Result<()> {
     let in_path = Path::new(input);
     if !in_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", input);
@@ -529,7 +532,12 @@ pub fn wad_unpack(input: &str, output: &str) -> Result<()> {
     // Iterate over contents, decrypt them, and write them out.
     for i in 0..title.tmd().content_records().len() {
         let content_file_name = format!("{:08X}.app", title.tmd().content_records()[i].index);
-        let dec_content = title.get_content_by_index(i).with_context(|| format!("Failed to unpack content with Content ID {:08X}.", title.tmd().content_records()[i].content_id))?;
+        let dec_content = if *skip_hash {
+            // Use the unchecked function if the hashes are being skipped.
+            title.get_content_by_index_unchecked(i).with_context(|| format!("Failed to unpack content with Content ID {:08X}.", title.tmd().content_records()[i].content_id))?
+        } else {
+            title.get_content_by_index(i).with_context(|| format!("Failed to unpack content with Content ID {:08X}.", title.tmd().content_records()[i].content_id))?
+        };
         fs::write(Path::join(out_path, content_file_name), dec_content).with_context(|| format!("Failed to open content file \"{:08X}.app\" for writing.", title.tmd().content_records()[i].content_id))?;
     }
     println!("Successfully unpacked WAD file to \"{}\"!", out_path.display());

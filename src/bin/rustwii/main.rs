@@ -109,8 +109,8 @@ fn main() -> Result<()> {
                 nand::emunand::Commands::InstallMissing { emunand, vwii } => {
                     nand::emunand::install_missing(emunand, vwii)?
                 },
-                nand::emunand::Commands::InstallTitle { wad, emunand, override_meta} => {
-                    nand::emunand::install_title(wad, emunand, override_meta)?
+                nand::emunand::Commands::InstallTitle { wad, emunand, override_meta, skip_hash} => {
+                    nand::emunand::install_title(wad, emunand, override_meta, skip_hash)?
                 },
                 nand::emunand::Commands::UninstallTitle { tid, emunand, remove_ticket } => {
                     nand::emunand::uninstall_title(tid, emunand, remove_ticket)?
@@ -234,8 +234,8 @@ fn main() -> Result<()> {
                 title::wad::Commands::Set { input, content, output, identifier, r#type} => {
                     title::wad::wad_set(input, content, output, identifier, r#type)?
                 },
-                title::wad::Commands::Unpack { input, output } => {
-                    title::wad::wad_unpack(input, output)?
+                title::wad::Commands::Unpack { input, output, skip_hash } => {
+                    title::wad::wad_unpack(input, output, skip_hash)?
                 },
             }
         },
