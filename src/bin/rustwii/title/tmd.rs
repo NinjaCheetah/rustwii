@@ -50,6 +50,7 @@ pub fn tmd_edit(input: &str, output: &Option<String>, edits: &TitleModifications
     let mut tmd = tmd::TMD::from_bytes(&fs::read(in_path)?).with_context(|| "The provided TMD file could not be parsed, and is likely invalid.")?;
     // Parse possible edits and perform each one provided.
     let mut changes_summary: Vec<String> = Vec::new();
+
     // These are joined, because that way if both are selected we only need to set the TID a
     // single time.
     if edits.tid.is_some() || edits.r#type.is_some() {
@@ -78,6 +79,10 @@ pub fn tmd_edit(input: &str, output: &Option<String>, edits: &TitleModifications
         let new_ios_tid = validate_target_ios(new_ios)?;
         changes_summary.push(format!("Changed required IOS from IOS{} to IOS{}", tmd.ios_tid().last().unwrap(), new_ios));
         tmd.set_ios_tid(new_ios_tid)?;
+    }
+
+    if changes_summary.is_empty() {
+        bail!("No changes were performed! You must specify at least one valid change to make to this TMD.")
     }
 
     tmd.fakesign()?;

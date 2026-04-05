@@ -24,7 +24,7 @@ pub struct ContentIdentifier {
 
 #[derive(Args)]
 #[clap(next_help_heading = "Possible Modifications")]
-#[group(multiple = true, required = true)]
+#[group(multiple = true, required = false)]
 /// Modifications that can be made to a title, shared between the WAD and TMD commands.
 pub struct TitleModifications {
     /// A new IOS version for this title (formatted as the decimal IOS version, e.g. 58, with a

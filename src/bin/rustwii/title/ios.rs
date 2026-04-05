@@ -59,7 +59,7 @@ pub enum Commands {
 
 #[derive(Args)]
 #[clap(next_help_heading = "Patches")]
-#[group(multiple = true, required = true)]
+#[group(multiple = true, required = false)]
 /// Modifications that can be made to a title, shared between the WAD and TMD commands.
 pub struct EnabledPatches {
     /// Patch out signature checks
@@ -174,7 +174,7 @@ pub fn patch_ios(
     println!("\nTotal patches applied: {patches_applied}");
 
     if patches_applied == 0 && version.is_none() && slot.is_none() {
-        bail!("No patchers were applied. Please make sure the specified patches are compatible \
+        bail!("No patches were applied. Please make sure that any specified patches are compatible \
         with this IOS.")
     }
 

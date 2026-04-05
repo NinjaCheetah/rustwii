@@ -278,9 +278,11 @@ pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications
         in_path.to_path_buf()
     };
     let mut title = title::Title::from_bytes(&fs::read(in_path)?).with_context(|| "The provided WAD file could not be parsed, and is likely invalid.")?;
+    
     // Parse possible edits and perform each one provided. Unlike WiiPy, I don't need a state bool
     // here! Wow!
     let mut changes_summary: Vec<String> = Vec::new();
+
     // These are joined, because that way if both are selected we only need to set the TID (and by
     // extension, re-encrypt the Title Key) a single time.
     if edits.tid.is_some() || edits.r#type.is_some() {
@@ -328,6 +330,10 @@ pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications
         } else {
             bail!("This WAD does not contain a channel, so a new channel name cannot be set!")
         }
+    }
+    
+    if changes_summary.is_empty() {
+        bail!("No changes were performed! You must specify at least one valid change to make to this WAD.")
     }
 
     title.fakesign()?;
