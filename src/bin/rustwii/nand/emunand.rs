@@ -4,9 +4,10 @@
 // Code for EmuNAND-related commands in the rustwii CLI.
 
 use std::{str, fs};
-use std::path::{absolute, Path};
+use std::path::{absolute, Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
+use glob::glob;
 use walkdir::WalkDir;
 use rustwii::nand::{emunand, setting};
 use rustwii::title::{nus, tmd};
@@ -29,7 +30,7 @@ pub enum Commands {
     },
     /// Install a WAD file to an EmuNAND
     InstallTitle {
-        /// The path to the WAD file to install
+        /// The path to the WAD file or folder of WAD files to install
         wad: String,
         /// The path to the target EmuNAND
         emunand: String,
@@ -307,15 +308,38 @@ pub fn install_title(wad: &str, emunand: &str, override_meta: &bool, skip_hash: 
     if !wad_path.exists() {
         bail!("Source WAD \"{}\" could not be found.", wad_path.display());
     }
+
     let emunand_path = Path::new(emunand);
     if !emunand_path.exists() {
         bail!("Target EmuNAND directory \"{}\" could not be found.", emunand_path.display());
     }
-    let wad_file = fs::read(wad_path).with_context(|| format!("Failed to open WAD file \"{}\" for reading.", wad_path.display()))?;
-    let title = title::Title::from_bytes(&wad_file).with_context(|| format!("The provided WAD file \"{}\" appears to be invalid.", wad_path.display()))?;
-    let emunand = emunand::EmuNAND::open(emunand_path.to_path_buf())?;
-    emunand.install_title(title, *override_meta, *skip_hash)?;
-    println!("Successfully installed WAD \"{}\" to EmuNAND at \"{}\"!", wad_path.display(), emunand_path.display());
+
+    if wad_path.is_dir() {
+        let wad_files: Vec<PathBuf> = glob(&format!("{}/*.wad", wad_path.display()))?
+            .filter_map(|f| f.ok()).collect();
+        if wad_files.is_empty() {
+            bail!("The source directory contains no WAD files!")
+        }
+
+        let emunand = emunand::EmuNAND::open(emunand_path.to_path_buf())?;
+        let mut wad_count = 0;
+        for wad in wad_files {
+            let wad_file = fs::read(&wad).with_context(|| format!("Failed to open WAD file \"{}\" for reading.", wad.display()))?;
+            let title = title::Title::from_bytes(&wad_file).with_context(|| format!("The provided WAD file \"{}\" appears to be invalid.", wad_path.display()))?;
+            match emunand.install_title(title, *override_meta, *skip_hash) {
+                Ok(_) => { wad_count += 1 },
+                Err(_) => { println!("WAD {} could not be installed!", wad.display()) }
+            }
+        }
+        println!("Successfully installed {} WAD(s) to EmuNAND at \"{}\"!", wad_count, emunand_path.display());
+    } else {
+        let wad_file = fs::read(wad_path).with_context(|| format!("Failed to open WAD file \"{}\" for reading.", wad_path.display()))?;
+        let title = title::Title::from_bytes(&wad_file).with_context(|| format!("The provided WAD file \"{}\" appears to be invalid.", wad_path.display()))?;
+        let emunand = emunand::EmuNAND::open(emunand_path.to_path_buf())?;
+        emunand.install_title(title, *override_meta, *skip_hash)?;
+        println!("Successfully installed WAD \"{}\" to EmuNAND at \"{}\"!", wad_path.display(), emunand_path.display());
+    }
+
     Ok(())
 }
 
