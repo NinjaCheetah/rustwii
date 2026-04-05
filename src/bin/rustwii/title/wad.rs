@@ -291,7 +291,9 @@ pub fn wad_edit(input: &str, output: &Option<String>, edits: &TitleModifications
 
         let tid_low = if let Some(new_tid) = &edits.tid {
             let new_tid = validate_target_tid(&new_tid.to_ascii_uppercase())?;
-            changes_summary.push(format!("Changed Title ID from \"{}\" to \"{}\"", hex::encode(&title.tmd().title_id()[4..8]).to_ascii_uppercase(), hex::encode(&new_tid).to_ascii_uppercase()));
+            let old_ascii = String::from_utf8_lossy(&title.tmd().title_id()[4..8]).trim_end_matches('\0').trim_start_matches('\0').to_owned();
+            let new_ascii = String::from_utf8_lossy(&new_tid).trim_end_matches('\0').trim_start_matches('\0').to_owned();
+            changes_summary.push(format!("Changed Title ID from \"{}\" to \"{}\"", old_ascii, new_ascii));
             new_tid
         } else {
             title.tmd().title_id()[4..8].to_vec()
