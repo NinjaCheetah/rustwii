@@ -5,6 +5,7 @@
 
 use std::fs;
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
 use glob::glob;
 use thiserror::Error;
@@ -196,6 +197,7 @@ impl EmuNAND {
                 }
             }
         }
+
         // Shared content needs to be installed to /shared1/, with incremental names decided by
         // the records in /shared1/content.map.
         // Start by checking for a map and loading it if it exists, so that we know what shared
@@ -219,6 +221,7 @@ impl EmuNAND {
             }
         }
         fs::write(&content_map_path, content_map.to_bytes()?)?;
+
         // The "footer" (officially "meta") is installed to /meta/<tid_high>/<tid_low>/title.met.
         // The "override meta" option installs the content at index 0 to title.met instead, as that
         // content contains the banner, and that's what title.met is meant to hold.
@@ -238,7 +241,8 @@ impl EmuNAND {
             safe_create_dir(&meta_dir)?;
             fs::write(meta_dir.join("title.met"), meta_data)?;
         }
-        // Finally, we need to update uid.sys (or create it if it doesn't exist) so that the newly
+
+        // We need to update uid.sys (or create it if it doesn't exist) so that the newly
         // installed title will actually show up (at least for channels).
         let uid_sys_path = self.emunand_dirs["sys"].join("uid.sys");
         let mut uid_sys = if uid_sys_path.exists() {
@@ -248,6 +252,17 @@ impl EmuNAND {
         };
         uid_sys.add(&title.tmd().title_id())?;
         fs::write(&uid_sys_path, &uid_sys.to_bytes()?)?;
+
+        // Initialize cert.sys if it hasn't already been made.
+        let cert_sys_path = self.emunand_dirs["sys"].join("cert.sys");
+        if !cert_sys_path.exists() {
+            let mut cert_sys: Vec<u8> = Vec::new();
+            cert_sys.write_all(&title.cert_chain().ticket_cert().to_bytes()?)?;
+            cert_sys.write_all(&title.cert_chain().ca_cert().to_bytes()?)?;
+            cert_sys.write_all(&title.cert_chain().tmd_cert().to_bytes()?)?;
+            fs::write(&cert_sys_path, &cert_sys)?;
+        }
+
         Ok(())
     }
     

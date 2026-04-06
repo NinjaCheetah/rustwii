@@ -12,6 +12,8 @@ use thiserror::Error;
 pub enum UidSysError {
     #[error("uid.sys is an invalid length and cannot be parsed")]
     InvalidUidSysLength,
+    #[error("no UID has been assigned for the specified Title ID")]
+    NoUidAssigned,
     #[error("uid.sys data is not in a valid format")]
     IO(#[from] std::io::Error),
 }
@@ -89,5 +91,13 @@ impl UidSys {
             uid: max_uid + 1,
         });
         Ok(Some(max_uid + 1))
+    }
+
+    pub fn uid(&self, title_id: &[u8; 8]) -> Result<u32, UidSysError> {
+        let entry = self.entries.iter().find(|entry| entry.title_id == *title_id);
+        if let Some(entry) = entry {
+            return Ok(entry.uid)
+        }
+        Err(UidSysError::NoUidAssigned)
     }
 }
