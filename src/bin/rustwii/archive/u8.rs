@@ -7,7 +7,7 @@ use std::{str, fs};
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
-use glob::glob;
+use glob::{glob, Pattern};
 use rustwii::archive::u8;
 
 #[derive(Subcommand)]
@@ -32,7 +32,8 @@ pub enum Commands {
 pub fn pack_dir_recursive(dir: &mut u8::U8Directory, in_path: PathBuf) -> Result<()> {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
-    for entry in glob(&format!("{}/*", in_path.display()))?.flatten() {
+    let pattern = format!("{}/{}", Pattern::escape(in_path.to_str().unwrap()), "*");
+    for entry in glob(&pattern)?.flatten() {
         match fs::metadata(&entry) {
             Ok(meta) if meta.is_file() => files.push(entry),
             Ok(meta) if meta.is_dir() => dirs.push(entry),

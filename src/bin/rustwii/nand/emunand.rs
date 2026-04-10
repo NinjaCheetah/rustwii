@@ -7,7 +7,7 @@ use std::{str, fs};
 use std::path::{absolute, Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
-use glob::glob;
+use glob::{glob, Pattern};
 use walkdir::WalkDir;
 use rustwii::nand::{emunand, setting};
 use rustwii::title::{nus, tmd};
@@ -315,7 +315,8 @@ pub fn install_title(wad: &str, emunand: &str, override_meta: &bool, skip_hash: 
     }
 
     if wad_path.is_dir() {
-        let wad_files: Vec<PathBuf> = glob(&format!("{}/*.wad", wad_path.display()))?
+        let pattern = format!("{}/{}.wad.footer", Pattern::escape(wad_path.to_str().unwrap()), "*");
+        let wad_files: Vec<PathBuf> = glob(&pattern)?
             .filter_map(|f| f.ok()).collect();
         if wad_files.is_empty() {
             bail!("The source directory contains no WAD files!")

@@ -7,7 +7,7 @@ use std::fs;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
-use glob::glob;
+use glob::{glob, Pattern};
 use thiserror::Error;
 use crate::nand::{sharedcontentmap, sys};
 use crate::title;
@@ -99,14 +99,16 @@ impl EmuNAND {
     /// Scans titles installed to an EmuNAND and returns a Vec of InstalledTitles instances.
     pub fn get_installed_titles(&self) -> Vec<InstalledTitles> {
         // Scan TID highs in /title/ first.
-        let tid_highs: Vec<PathBuf> = glob(&format!("{}/*", self.emunand_dirs["title"].display()))
+        let pattern = format!("{}/{}", Pattern::escape(self.emunand_dirs["title"].to_str().unwrap()), "*");
+        let tid_highs: Vec<PathBuf> = glob(&pattern)
             .unwrap().filter_map(|f| f.ok()).collect();
         // Iterate over the TID lows in each TID high, and save every title where
         // /title/<tid_high>/<tid_low>/title.tmd exists.
         let mut installed_titles: Vec<InstalledTitles> = Vec::new();
         for high in tid_highs {
             if high.is_dir() {
-                let tid_lows: Vec<PathBuf> = glob(&format!("{}/*", high.display()))
+                let pattern = format!("{}/{}", Pattern::escape(high.to_str().unwrap()), "*");
+                let tid_lows: Vec<PathBuf> = glob(&pattern)
                     .unwrap().filter_map(|f| f.ok()).collect();
                 let mut valid_lows: Vec<String> = Vec::new();
                 for low in tid_lows {

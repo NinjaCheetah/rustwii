@@ -7,7 +7,7 @@ use std::{str, fs, fmt};
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::{Subcommand, Args};
-use glob::glob;
+use glob::{glob, Pattern};
 use hex::FromHex;
 use rand::prelude::*;
 use strum::IntoEnumIterator;
@@ -351,8 +351,10 @@ pub fn wad_pack(input: &str, output: &str, fakesign: &bool) -> Result<()> {
         bail!("Source directory \"{}\" does not exist.", in_path.display());
     }
     // Read TMD file (only accept one file).
-    let tmd_files: Vec<PathBuf> = glob(&format!("{}/*.tmd", in_path.display()))?
-        .filter_map(|f| f.ok()).collect();
+    let pattern = format!("{}/{}.tmd", Pattern::escape(in_path.to_str().unwrap()), "*");
+    let tmd_files: Vec<PathBuf> = glob(&pattern)?
+        .filter_map(|f| f.ok())
+        .collect();
     if tmd_files.is_empty() {
         bail!("No TMD file found in the source directory.");
     } else if tmd_files.len() > 1 {
@@ -360,8 +362,10 @@ pub fn wad_pack(input: &str, output: &str, fakesign: &bool) -> Result<()> {
     }
     let tmd = tmd::TMD::from_bytes(&fs::read(&tmd_files[0]).with_context(|| "Could not open TMD file for reading.")?)
         .with_context(|| "The provided TMD file appears to be invalid.")?;
+
     // Read Ticket file (only accept one file).
-    let ticket_files: Vec<PathBuf> = glob(&format!("{}/*.tik", in_path.display()))?
+    let pattern = format!("{}/{}.tik", Pattern::escape(in_path.to_str().unwrap()), "*");
+    let ticket_files: Vec<PathBuf> = glob(&pattern)?
         .filter_map(|f| f.ok()).collect();
     if ticket_files.is_empty() {
         bail!("No Ticket file found in the source directory.");
@@ -370,8 +374,10 @@ pub fn wad_pack(input: &str, output: &str, fakesign: &bool) -> Result<()> {
     }
     let tik = ticket::Ticket::from_bytes(&fs::read(&ticket_files[0]).with_context(|| "Could not open Ticket file for reading.")?)
         .with_context(|| "The provided Ticket file appears to be invalid.")?;
+
     // Read cert chain (only accept one file).
-    let cert_files: Vec<PathBuf> = glob(&format!("{}/*.cert", in_path.display()))?
+    let pattern = format!("{}/{}.cert", Pattern::escape(in_path.to_str().unwrap()), "*");
+    let cert_files: Vec<PathBuf> = glob(&pattern)?
         .filter_map(|f| f.ok()).collect();
     if cert_files.is_empty() {
         bail!("No cert file found in the source directory.");
@@ -380,8 +386,10 @@ pub fn wad_pack(input: &str, output: &str, fakesign: &bool) -> Result<()> {
     }
     let cert_chain = cert::CertificateChain::from_bytes(&fs::read(&cert_files[0]).with_context(|| "Could not open cert chain file for reading.")?)
         .with_context(|| "The provided certificate chain appears to be invalid.")?;
+
     // Read footer, if one exists (only accept one file).
-    let footer_files: Vec<PathBuf> = glob(&format!("{}/*.footer", in_path.display()))?
+    let pattern = format!("{}/{}.footer", Pattern::escape(in_path.to_str().unwrap()), "*");
+    let footer_files: Vec<PathBuf> = glob(&pattern)?
         .filter_map(|f| f.ok()).collect();
     let mut footer: Vec<u8> = Vec::new();
     if footer_files.len() == 1 {
