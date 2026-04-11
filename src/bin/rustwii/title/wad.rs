@@ -241,21 +241,18 @@ pub fn wad_convert(input: &str, target: &ConvertTargets, output: &Option<String>
             ticket.set_signature_issuer(String::from("Root-CA00000002-XS00000006"))?;
             title_key_new = crypto::encrypt_title_key(title_key, 0, title.ticket().title_id(), true);
             ticket.set_common_key_index(0);
-            tmd.set_is_vwii(false);
         },
         Target::Retail => {
             tmd.set_signature_issuer(String::from("Root-CA00000001-CP00000004"))?;
             ticket.set_signature_issuer(String::from("Root-CA00000001-XS00000003"))?;
             title_key_new = crypto::encrypt_title_key(title_key, 0, title.ticket().title_id(), false);
             ticket.set_common_key_index(0);
-            tmd.set_is_vwii(false);
         },
         Target::Vwii => {
             tmd.set_signature_issuer(String::from("Root-CA00000001-CP00000004"))?;
             ticket.set_signature_issuer(String::from("Root-CA00000001-XS00000003"))?;
             title_key_new = crypto::encrypt_title_key(title_key, 2, title.ticket().title_id(), false);
             ticket.set_common_key_index(2);
-            tmd.set_is_vwii(true);
         }
     }
     ticket.set_title_key(title_key_new);

@@ -264,7 +264,8 @@ pub fn install_missing(emunand: &str, vwii: &bool) -> Result<()> {
         .filter(|x| !installed_ioses.contains(&hex::encode(x.ios_tid()).to_ascii_uppercase()))
         .map(|x| u32::from_str_radix(&hex::encode(&x.ios_tid()[4..8]), 16).unwrap()).collect();
     if missing_ioses.is_empty() {
-        bail!("All required IOSes are already installed!");
+        println!("All required IOSes are already installed!");
+        return Ok(())
     }
     missing_ioses.sort();
     // Because we don't need to install the same IOS for every single title that requires it.
