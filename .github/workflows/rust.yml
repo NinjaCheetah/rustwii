@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     # Not sure if this is the best choice, but I'm building in release mode to produce more effective nightly binaries.
     - name: Update Toolchain
       run: rustup update
@@ -37,7 +37,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Update Toolchain
       run: rustup update
     - name: Add ARM64 Target
@@ -60,7 +60,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Update Toolchain
       run: rustup update
     - name: Add x86_64 Target
@@ -83,7 +83,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Update Toolchain
       run: rustup update
     - name: Build rustwii
@@ -92,6 +92,21 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: D:\a\rustwii\rustwii\target\release\rustwii.exe
-        name: rustwii-Windows-bin
+        name: rustwii-Windows-x86_64-bin
 
-      
+  build-windows-x86:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: i686-pc-windows-msvc
+    - name: Build rustwii
+      run: cargo build --verbose --release --target i686-pc-windows-msvc
+    - name: Upload rustwii
+      uses: actions/upload-artifact@v7
+      with:
+        path: D:\a\rustwii\rustwii\target\i686-pc-windows-msvc\release\rustwii.exe
+        name: rustwii-Windows-x86-bin
