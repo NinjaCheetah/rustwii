@@ -403,11 +403,17 @@ pub fn wad_pack(input: &str, output: &str, fakesign: &bool) -> Result<()> {
     )?;
 
     // Iterate over expected content and load the content into the title.
-    let content_indexes: Vec<u16> = title.tmd().content_records().iter().map(|record| record.index).collect();
-    for index in content_indexes {
-        let data = fs::read(format!("{}/{:08X}.app", in_path.display(), index))
-            .with_context(|| format!("Could not open content file \"{:08X}.app\" for reading.", index))?;
-        title.set_content(&data, index as usize, None, None)
+    let content_records: Vec<(usize, u16)> = title
+        .tmd()
+        .content_records()
+        .iter()
+        .enumerate()
+        .map(|(position, record)| (position, record.index))
+        .collect();
+    for (position, content_index) in content_records {
+        let data = fs::read(format!("{}/{:08X}.app", in_path.display(), content_index))
+            .with_context(|| format!("Could not open content file \"{:08X}.app\" for reading.", content_index))?;
+        title.set_content(&data, position, None, None)
             .with_context(|| "Failed to load content into the ContentRegion.")?;
     }
 

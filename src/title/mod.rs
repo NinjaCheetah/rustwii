@@ -338,10 +338,22 @@ impl Title {
         let mut hasher = Sha1::new();
         hasher.update(content);
         let content_hash: [u8; 20] = hasher.finalize().into();
+
+        // Find the actual index stored in the record so that we're encrypting with the correct IV.
+        // The number of issues I've had to solve that revolve around the wrong IV being used for
+        // WADs with out-of-order content is actually really obnoxious.
+        let record_index = self.tmd.content_records()
+            .get(index)
+            .ok_or(TitleError::IndexOutOfRange {
+                index,
+                max: self.tmd.content_records().len().saturating_sub(1),
+            })?
+            .index;
+
         let content_enc = crypto::encrypt_content(
             content,
             self.ticket.title_key_dec(),
-            index as u16,
+            record_index,
             content_size
         );
         self.set_enc_content(&content_enc, index, content_size, content_hash, cid, content_type)?;
